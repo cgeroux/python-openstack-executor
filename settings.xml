@@ -1,0 +1,59 @@
+<actions version="0.0">
+  
+  <action>
+    <ID>backup-test</ID>
+    <dependencies>
+      <dependency>VM-termination</dependency>
+    </dependencies>
+  </action>
+  
+  <action>
+    <ID>backup-data</ID>
+    <dependencies>
+      <dependency>VM-termination</dependency>
+    </dependencies>
+  </action>
+  
+  <action>
+    <ID>VM-termination</ID>
+  </action>
+
+  <action>
+    <ID>VM-creation</ID>
+    <dependencies>
+      <dependency>backup01</dependency>
+      <dependency>backup02</dependency>
+    </dependencies>
+    <vm-create-parameters>
+      <parameter>
+        <name>Instance Name</name>
+        <value>test</value>
+      </parameter>
+      <parameter>
+        <name>Flavor</name>
+        <value>p1-0.75gb</value>
+      </parameter>
+      <parameter>
+        <name>Instance Count</name>
+        <value>1</value>
+      </parameter>
+      <parameter>
+         <name>Instance Boot Source</name>
+         <value>Boot From Volume</value>
+      </parameter>
+      <parameter>
+        <name>Volume</name>
+        <value>test</value>
+      </paramter>
+    </vm-create-parameters>
+  </action>
+  
+  <action>
+    <ID>Attach-Disk</ID>
+    <dependencies>
+      <dependency>VM-creation</dependency>
+    </dependencies>
+    
+  </action>
+  
+</actions>
