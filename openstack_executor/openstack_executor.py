@@ -7,6 +7,11 @@ from lxml import etree
 import os
 from .ActionManager import ActionManager
 
+authVersion=None
+
+class MissingEnvVariable(Exception):
+  pass
+
 def addParserOptions(parser):
   """Adds command line options
   """
@@ -47,16 +52,29 @@ def main():
   
   #check to see if the environment has the expected variables
   envVars=os.environ.keys()
-  requiredVars=["OS_AUTH_URL","OS_USERNAME","OS_PASSWORD","OS_TENANT_NAME"
-    ,"OS_REGION_NAME"]
-  for var in requiredVars:
-    
-    if( var not in envVars):
+  requiredVarsV2=["OS_AUTH_URL","OS_USERNAME","OS_PASSWORD","OS_REGION_NAME", "OS_TENANT_NAME"]
+  requiredVarsV3=["OS_AUTH_URL","OS_USERNAME","OS_PASSWORD","OS_PROJECT_NAME","OS_USER_DOMAIN_NAME"]
+  
+  global authVersion
+  
+  #check for version 2 vars
+  try:
+    for var in requiredVarsV2:
       
-      #check to see if there is a mapping from v3 to v2
-        raise Exception("environment variable \""+var
-          +"\" not found, did you source the cloud *-openrc.sh "
-          +"file and is it version 2 (v2)?")
+      if( var not in envVars):
+        raise MissingEnvVariable(var)
+    
+    authVersion="2"
+  except MissingEnvVariable:
+    
+    #check for version 3 vars
+    for var in requiredVarsV3:
+      
+      if( var not in envVars):
+        raise MissingEnvVariable("Missing environment variables for "
+          +"both v2 and v3 authentication methods, did you source your "
+          +"*-openrc.sh file?")
+    authVersion="3"
   
   #Parse XML Actions
   xmlActions=tree.getroot()

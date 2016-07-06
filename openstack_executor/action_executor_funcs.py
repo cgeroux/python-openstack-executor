@@ -1,14 +1,20 @@
 from __future__ import print_function
-from .createOSClients import *
 import time
 import sys
 import novaclient
 import utilFuncs
-
+from openstack_executor import authVersion
 
 OSCheckWaitTime=3#time to wait between polling OS to check for action 
   #completion in seconds
 OSNumChecks=20#number of times to check for action completion
+
+if authVersion=="2":
+  from .createOSClientsV2 import *
+elif authVersion=="3":
+  from .createOSClientsV3 import *
+else:
+  raise Exception("Unexpected authorization version \""+authVersion+"\"")
 
 def instanceTerminate(parameters,clients):
   """Terminate an instance
