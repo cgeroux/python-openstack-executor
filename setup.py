@@ -21,5 +21,6 @@ setup(
   author_email="chris.geroux@ace-net.ca",
   url="",
   test_suite='nose.collector',
-  test_require=['nose']
+  test_require=['nose'],
+  include_package_data=True
   )

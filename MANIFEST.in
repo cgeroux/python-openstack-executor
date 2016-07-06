@@ -1,1 +1,4 @@
 include LICENSE
+include openstack_executor/xmlSchema/actions.xsd
+include openstack_executor/xmlSchema/IP.xsd
+include openstack_executor/xmlSchema/parameter-types.xsd

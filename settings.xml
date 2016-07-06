@@ -1,59 +1,102 @@
 <actions version="0.0">
   
   <action>
-    <ID>backup-test</ID>
-    <dependencies>
-      <dependency>VM-termination</dependency>
-    </dependencies>
+    <ID>vm-terminate</ID>
+    <parameters>
+      <instance-terminate>
+        <instance-name>test</instance-name>
+      </instance-terminate>
+    </parameters>
   </action>
   
   <action>
-    <ID>backup-data</ID>
+    <ID>create-test-image</ID>
     <dependencies>
-      <dependency>VM-termination</dependency>
+      <dependency>vm-terminate</dependency>
     </dependencies>
-  </action>
-  
-  <action>
-    <ID>VM-termination</ID>
+    <parameters>
+      <volume-create-image>
+        <volume-name>test</volume-name>
+        <image-name>test-image</image-name>
+      </volume-create-image>
+    </parameters>
   </action>
 
   <action>
-    <ID>VM-creation</ID>
+    <ID>download-test-image</ID>
     <dependencies>
-      <dependency>backup01</dependency>
-      <dependency>backup02</dependency>
+      <dependency>create-test-image</dependency>
     </dependencies>
-    <vm-create-parameters>
-      <parameter>
-        <name>Instance Name</name>
-        <value>test</value>
-      </parameter>
-      <parameter>
-        <name>Flavor</name>
-        <value>p1-0.75gb</value>
-      </parameter>
-      <parameter>
-        <name>Instance Count</name>
-        <value>1</value>
-      </parameter>
-      <parameter>
-         <name>Instance Boot Source</name>
-         <value>Boot From Volume</value>
-      </parameter>
-      <parameter>
-        <name>Volume</name>
-        <value>test</value>
-      </paramter>
-    </vm-create-parameters>
+    <parameters>
+      <download-image>
+        <image-name>test-image</image-name>
+        <file-name>test-image.raw</file-name>
+      </download-image>
+    </parameters>
   </action>
   
   <action>
-    <ID>Attach-Disk</ID>
+    <ID>create-data-image</ID>
     <dependencies>
-      <dependency>VM-creation</dependency>
+      <dependency>vm-terminate</dependency>
     </dependencies>
-    
+    <parameters>
+      <volume-create-image>
+        <volume-name>data</volume-name>
+        <image-name>data-image</image-name>
+      </volume-create-image>
+    </parameters>
+  </action>
+  
+  <action>
+    <ID>download-data-image</ID>
+    <dependencies>
+      <dependency>create-data-image</dependency>
+    </dependencies>
+    <parameters>
+      <download-image>
+        <image-name>data-image</image-name>
+        <file-name>data-image.raw</file-name>
+      </download-image>
+    </parameters>
+  </action>
+  
+  <action>
+    <ID>vm-create</ID>
+    <dependencies>
+      <dependency>download-test-image</dependency>
+      <dependency>download-data-image</dependency>
+    </dependencies>
+    <parameters>
+      <instance-create>
+        <instance-name>test</instance-name>
+        <flavor>p1-0.75gb</flavor>
+        <instance-count>1</instance-count>
+        <instance-boot-source>
+          <volume>test</volume>
+        </instance-boot-source>
+      </instance-create>
+    </parameters>
+  </action>
+  
+  <action>
+    <ID>attach-disk</ID>
+    <dependencies>
+      <dependency>vm-create</dependency>
+    </dependencies>
+    <parameters>
+      <attach-volume>
+        <instance-name>test</instance-name>
+        <volume-name>test</volume-name>
+      </attach-volume>
+    </parameters>
+  </action>
+  
+  <action>
+    <ID></ID>
+    <dependencies>
+      <dependency>vm-create</dependency>
+    </dependencies>
   </action>
   
 </actions>

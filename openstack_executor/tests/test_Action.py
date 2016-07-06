@@ -3,6 +3,8 @@ import unittest
 from lxml import etree
 
 from openstack_executor.Action import *
+def instanceTerminateStub(parameters,clients):
+  clients["nova"]=None
 
 class TestClassActionMethods(unittest.TestCase):
   """Note that the function names indicate the function call order.
@@ -11,7 +13,9 @@ class TestClassActionMethods(unittest.TestCase):
   string ordering. Thus the test_01 is used to specify it should be run before
   test_02 etc.
   
-  Note: it seems that the setup objects are unique for each test and state changes made by one test are not shared between tests. Making ordering much less important.
+  Note: it seems that the setup objects are unique for each test and state 
+  changes made by one test are not shared between tests. Making ordering much 
+  less important.
   """
   
   def setUp(self):
@@ -23,9 +27,16 @@ class TestClassActionMethods(unittest.TestCase):
         <dependencies>
           <dependency>VM-termination</dependency>
         </dependencies>
+        <parameters>
+          <instance-terminate>
+            <instance-name>test</instance-name>
+          </instance-terminate>
+        </parameters>
       </action>'''
     xmlAction=etree.fromstring(xmlActionStr)
     self.actionOneDep=Action(xmlAction)
+    #print(dir(Action))
+    Action.exeFuncs={"instance-terminate":instanceTerminateStub}
   def test_getID(self):
     
     #check we got correct ID
@@ -40,7 +51,7 @@ class TestClassActionMethods(unittest.TestCase):
     #check that dependencies not met
     self.assertEqual(self.actionOneDep.allDependenciesMet(),False)
   def test_allDependenciesMetTrue(self):
-  
+    
     #mark dependency as satisfied
     self.actionOneDep.setDependencyAsSatisfied("VM-termination")
     
@@ -52,7 +63,7 @@ class TestClassActionMethods(unittest.TestCase):
     self.actionOneDep.setDependencyAsSatisfied("VM-termination")
     
     #since all dependencies should have been met, did it execute
-    self.assertEqual(self.actionOneDep.executed(),True)
+    self.assertEqual(self.actionOneDep.executed,True)
   def test_signalDependancySatisfied(self):
     
     def signalFunction(dependent,dependency):
@@ -70,5 +81,8 @@ class TestClassActionMethods(unittest.TestCase):
     #mark dependency as satisfied, should cause action to execute
     #and signal to dependents it has been completed
     self.actionOneDep.setDependencyAsSatisfied("VM-termination")
+  def test_setClientInExecFunc(self):
+    self.actionOneDep.execute()
+    self.assertTrue("nova" in Action.clients.keys())
 if __name__=="__main__":
   unittest.main()
