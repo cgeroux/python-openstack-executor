@@ -1,0 +1,31 @@
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:pt="parameterTypes"
+  delemntFormDefault="qualified">
+  
+  <xs:import schemaLocation="parameter-types.xsd" namespace="parameterTypes" />
+  
+  <xs:element name="actions">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="action" type="action-type" minOccurs="0" maxOccurs="unbounded" />
+      </xs:sequence>
+      <xs:attribute name="version" type="xs:string" />
+    </xs:complexType>
+  </xs:element>
+  
+  <xs:complexType name="action-type">
+    <xs:all>
+      <xs:element name="ID" type="xs:string" />
+      <xs:element name="dependencies" type="dependencies-type" minOccurs="0" maxOccurs="1" />
+      <xs:element name="parameters" type="pt:parameters-type" />
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="dependencies-type">
+    <xs:sequence>
+      <xs:element name="dependency" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+  
+</xs:schema>
