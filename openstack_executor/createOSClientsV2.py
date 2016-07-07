@@ -8,6 +8,8 @@ glAPIVersion="1"
 import keystoneclient.client as kclient
 ksAPIVersion="2"
 
+from .imageFormats import *
+
 def ensureNovaClient(clients):
   #make sure there is a nova client
   if "nova" not in clients.keys():
@@ -82,3 +84,9 @@ def createGlanceClient(clients):
     ,endpoint=clients["keystone"].service_catalog.url_for(service_type="image"
     ,endpoint_type="publicURL")
     ,token=clients["keystone"].auth_token)
+def getProjectID(clients):
+  ensureKeyStoneClient(clients)
+  return clients["keystone"].tenant_id
+def getUserID(clients):
+  ensureKeyStoneClient(clients)
+  return clients["keystone"].user_id

@@ -7,7 +7,7 @@ from lxml import etree
 import os
 from .ActionManager import ActionManager
 
-authVersion=None
+authVersion="2"#default version is 2
 
 class MissingEnvVariable(Exception):
   pass
@@ -83,7 +83,3 @@ def main():
   #perform the actions
   actionManager.performActions()
   
-  #create the nova client
-  #nova=nvclient.Client(nvAPIVersion,auth_url=env['OS_AUTH_URL']
-  #  ,username=env['OS_USERNAME'],api_key=env['OS_PASSWORD']
-  #  ,project_id=env['OS_TENANT_NAME'],region_name=env['OS_REGION_NAME'])

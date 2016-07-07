@@ -12,6 +12,8 @@ from keystoneauth1.identity import v3
 from keystoneauth1 import session
 from keystoneclient import client
 
+from .imageFormats import *
+
 def ensureNovaClient(clients):
   #make sure there is a nova client
   if "nova" not in clients.keys():
@@ -74,7 +76,9 @@ def createSession():
   return session.Session(auth=auth)
 def createKeyStoneClient(clients):
   ensureSession(clients)
-  return ksclient.Client(ksAPIVersion,session=clients["session"])
+  keystone=ksclient.Client(ksAPIVersion,session=clients["session"])
+  #keystone.authenticate()
+  return keystone
 def createNovaClient(clients):
   ensureSession(clients)
   return nvclient.Client(nvAPIVersion,session=clients["session"])
@@ -82,8 +86,11 @@ def createCinderClient(clients):
   ensureSession(clients)
   return ciclient.Client(ciAPIVersion,session=clients["session"])
 def createGlanceClient(clients):
-  ensureKeyStoneClient(clients)
+  ensureSession(clients)
   return glclient.Client(glAPIVersion,session=clients["session"])
-    #,endpoint=clients["keystone"].service_catalog.url_for(service_type="image"
-    #,endpoint_type="publicURL")
-    #,token=clients["keystone"].auth_token)
+def getProjectID(clients):
+  ensureSession(clients)
+  return clients["session"].get_project_id()
+def getUserID(clients):
+  ensureSession(clients)
+  return clients["session"].get_user_id()

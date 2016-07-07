@@ -16,7 +16,7 @@
   
   <xs:complexType name="action-type">
     <xs:all>
-      <xs:element name="ID" type="xs:string" />
+      <xs:element name="id" type="xs:string" />
       <xs:element name="dependencies" type="dependencies-type" minOccurs="0" maxOccurs="1" />
       <xs:element name="parameters" type="pt:parameters-type" />
     </xs:all>

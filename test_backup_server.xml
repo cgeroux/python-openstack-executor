@@ -1,0 +1,109 @@
+<actions version="0.0">
+  
+  <action>
+    <id>vm-terminate</id>
+    <parameters>
+      <terminate-instance>
+        <instance>test-backup</instance>
+      </terminate-instance>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>make-data-image</id>
+    <dependencies>
+      <dependency>vm-terminate</dependency>
+    </dependencies>
+    <parameters>
+      <create-image-from-volume>
+        <volume>data</volume>
+        <image-name>data-image</image-name>
+        <format>vmdk</format>
+      </create-image-from-volume>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>download-data-image</id>
+    <dependencies>
+      <dependency>make-data-image</dependency>
+    </dependencies>
+    <parameters>
+      <download-image>
+        <image>data-image</image>
+        <file-name>data-image</file-name>
+      </download-image>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>make-root-image</id>
+    <dependencies>
+      <dependency>vm-terminate</dependency>
+    </dependencies>
+    <parameters>
+      <create-image-from-volume>
+        <volume>root</volume>
+        <image-name>root-image</image-name>
+        <format>vmdk</format>
+      </create-image-from-volume>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>download-root-image</id>
+    <dependencies>
+      <dependency>make-root-image</dependency>
+    </dependencies>
+    <parameters>
+      <download-image>
+        <image>root-image</image>
+        <file-name>root-image</file-name>
+      </download-image>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>vm-create</id>
+    <dependencies>
+      <dependency>make-data-image</dependency>
+      <dependency>make-root-image</dependency>
+    </dependencies>
+    <parameters>
+      <create-instance>
+        <name>test-backup</name>
+        <flavor>c4-15gb-205</flavor>
+        <instance-boot-source>
+          <volume>root</volume>
+        </instance-boot-source>
+      </create-instance>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>add-ip</id>
+    <dependencies>
+      <dependency>vm-create</dependency>
+    </dependencies>
+    <parameters>
+      <associate-floating-ip>
+        <instance>test-backup</instance>
+        <ip>206.167.123.123</ip>
+      </associate-floating-ip>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>attach-data-disk</id>
+    <dependencies>
+      <dependency>vm-create</dependency>
+    </dependencies>
+    <parameters>
+      <attach-volume>
+        <instance>test-backup</instance>
+        <volume>data</volume>
+      </attach-volume>
+    </parameters>
+  </action>
+  
+</actions>

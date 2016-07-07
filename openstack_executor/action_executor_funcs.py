@@ -9,6 +9,10 @@ OSCheckWaitTime=3#time to wait between polling OS to check for action
   #completion in seconds
 OSNumChecks=20#number of times to check for action completion
 
+#assume rate of creation, this is based on a 10Gb
+#volume with 805Mb of data taking 57s to create an image from
+gbPers=0.01
+
 if authVersion=="2":
   from .createOSClientsV2 import *
 elif authVersion=="3":
@@ -16,13 +20,14 @@ elif authVersion=="3":
 else:
   raise Exception("Unexpected authorization version \""+authVersion+"\"")
 
-def instanceTerminate(parameters,clients):
+def terminateInstance(parameters,clients):
   """Terminate an instance
   """
   
   ensureNovaClient(clients)
   
   sys.stdout.write("  Terminating instance \""+parameters["instance"]+"\" ")
+  sys.stdout.flush()
   
   #get list of servers
   servers=clients["nova"].servers.list()
@@ -71,20 +76,21 @@ def instanceTerminate(parameters,clients):
   #notify that termination has completed
   sys.stdout.write("\n    Termination completed.\n")
   return
-def volumeCreateImage(parameters,clients):
+def createImageFromVolume(parameters,clients):
   """Creates an image from a volume
   """
   
   ensureCinderClient(clients)
-  ensureKeyStoneClient(clients)
   ensureGlanceClient(clients)
   
   #get the volume to image
   volumeToImage=None
+  projectID=getProjectID(clients)
   volumes=clients["cinder"].volumes.list()
   for volume in volumes:
     if volume.name==parameters["volume"] or volume.id==parameters["volume"]:
       volumeToImage=volume
+      break
   
   if volumeToImage==None:
     raise Exception("volume with name or id \""+parameters["volume"]+"\" not found!")
@@ -92,7 +98,7 @@ def volumeCreateImage(parameters,clients):
   #check if there is an image with that name already
   #technically there can be multiple images with the same name
   #but that makes things complicated
-  images=clients["glance"].images.list(owner=clients["keystone"].tenant_id)
+  images=clients["glance"].images.list(owner=projectID)
   for image in images:
     if(image.name==parameters["image-name"]):
       raise Exception("an image with the name \""+str(parameters["image-name"])
@@ -100,32 +106,28 @@ def volumeCreateImage(parameters,clients):
   
   sys.stdout.write("  Creating image \""+parameters["image-name"]
     +"\" from volume \""+parameters["volume"]+"\" ")
+  sys.stdout.flush()
   
   #create image from volume
   force=True#not sure what this does, a few tests don't indicate a 
     #difference between True of False
-  image_name=parameters["image-name"]
-  container_format='bare'
+  imageName=parameters["image-name"]
   if "format" in parameters.keys():
-    disk_format=parameters["format"]
+    diskFormat=parameters["format"]
   else:
-    disk_format="qcow2"
-  volumeToImage.upload_to_image(force,image_name,container_format,disk_format)
+    diskFormat="qcow2"
+  volumeToImage.upload_to_image(force,imageName,containerFormat,diskFormat)
   
   #check that the image has been created
   imageNotActive=True
   iter=0
 
-  #assume rate of creation, this is based on a 10Gb
-  #volume with 805Mb of data taking 57s to create an image from
-  gbPers=0.01
-  
   #estimate how many times we will check based on the size of the volume
   #this should be a significant overestimate
   numChecks=int(float(volumeToImage.size)/gbPers/float(OSCheckWaitTime))
   while imageNotActive and iter<numChecks:
     
-    images=clients["glance"].images.list(owner=clients["keystone"].tenant_id)
+    images=clients["glance"].images.list(owner=projectID)
     for image in images:
       if image.name==parameters["image-name"]:
         if image.status=="active":
@@ -148,33 +150,45 @@ def downloadImage(parameters,clients):
   """Downloads an image to the current working directory
   """
   
-  ensureKeyStoneClient(clients)
   ensureGlanceClient(clients)
   
   #check if we have a match-owner option
   matchOwner=True
   if "public-image" in parameters.keys():
     if parameters["public-image"] in ["true",1]:
-      matchOwner=False#don't match owner if it is a public image as it won't find it
+      matchOwner=False#don't match owner if it is a public
+        #image as it won't find it
   
+  #get a list of images
+  projectID=getProjectID(clients)
   if matchOwner:
-    images=clients["glance"].images.list(owner=clients["keystone"].tenant_id)
+    images=clients["glance"].images.list(owner=projectID)
   else:
     images=clients["glance"].images.list()
   
+  #find the image to download
   imageToDownLoad=None
   for image in images:
     if(image.name==parameters["image"] or image.id==parameters["image"]):
       imageToDownLoad=image
       break
+      
+  #if image not found
+  if imageToDownLoad==None:
+    if matchOwner:
+      message="no image owned by the current user with name or id \"" \
+        +parameters["image"]+"\" was found."
+    else:
+      message="no image with name or id \""+parameters["image"]+"\" was found."
+    raise Exception(message)
   
-  #download image
+  #Create a filename to save image to
   fileName=parameters["file-name"]+"."+imageToDownLoad.disk_format
   sys.stdout.write("  Downloading image \""+parameters["image"]
     +"\" to file \""+fileName+"\" \n")
   sys.stdout.flush()
   
-  
+  #download the image
   imageFile=open(fileName,'w+')
   chunks=imageToDownLoad.data()
   imageSize=chunks.length
@@ -189,7 +203,7 @@ def downloadImage(parameters,clients):
   #notify that image download has completed
   sys.stdout.write("\n    Image download completed.\n")
   return
-def instanceCreate(parameters,clients):
+def createInstance(parameters,clients):
   """Creates an instance
   """
   
@@ -202,6 +216,7 @@ def instanceCreate(parameters,clients):
   hostname=parameters["name"].lower()
   
   sys.stdout.write("  Creating instance \""+hostname+"\" ")
+  sys.stdout.flush()
   
   #get a network to attach to
   if "network" in parameters.keys():
@@ -295,6 +310,7 @@ def instanceCreate(parameters,clients):
     #Create the instance
     blockDeviceMapping={'vda':volumeID}
     sys.stdout.write("\n    Booting from a volume ")
+    sys.stdout.flush()
     instance=clients["nova"].servers.create(
       name=hostname
       ,block_device_mapping=blockDeviceMapping
@@ -379,6 +395,7 @@ def attachVolume(parameters,clients):
         +"\" on device \""+volumeToAttach.attachments[0]["device"])
         
   sys.stdout.write("  Attaching \""+parameters["volume"]+"\" to instance \""+parameters["instance"]+"\" ")
+  sys.stdout.flush()
   
   #attach volume to instance
   if "device" in parameters.keys():
@@ -475,6 +492,7 @@ def associateFloatingIP(parameters,clients):
   #at this point should have an ip to attach to an instance
   sys.stdout.write("  associating floating ip \""+str(ipToAttach.ip)+"\" with \""
     +parameters["instance"]+"\" ")
+  sys.stdout.flush()
   
   #check that specified instance exists
   servers=clients["nova"].servers.list()
@@ -530,7 +548,239 @@ def associateFloatingIP(parameters,clients):
   
   sys.stdout.write("\n    Association completed.\n")
   return
+def deleteImage(parameters,clients):
+  """Delete an image owned by the current user
+  """
     
+  ensureGlanceClient(clients)
+  
+  #Get a list of images owned by the current user
+  projectID=getProjectID(clients)
+  images=clients["glance"].images.list(owner=projectID)
+  
+  #find the image to delete
+  imageToDelete=None
+  for image in images:
+    if(image.name==parameters["image"] or image.id==parameters["image"]):
+      imageToDelete=image
+      break
+  
+  #if image not found warn that nothing is being done
+  if imageToDelete==None:
+    message="  WARNING: no image owned by the current user with name or id \""\
+      +parameters["image"]+"\" was found.\n"
+    sys.stdout.write(message)
+    return
+  
+  sys.stdout.write("  Deleting image \""+parameters["image"]+"\" ")
+  sys.stdout.flush()
+  
+  #delete the image
+  imageID=imageToDelete.id
+  imageToDelete.delete()
+  
+  #check that it is deleted
+  imageFound=True
+  iter=0
+  while imageFound and iter<OSNumChecks:
+    
+    #will throw an exception if not found, which one?
+    images=clients["glance"].images.list(owner=projectID)
+    imageFound=False
+    for image in images:
+      if(image.id==imageID):
+        imageFound=True
+        break
+    
+    #wait some amount of time before checking again
+    sys.stdout.write(".")
+    sys.stdout.flush()
+    time.sleep(OSCheckWaitTime)
+    iter+=1
+      
+  if imageFound:
+    raise Exception("Timed out waiting for image deletion to complete.\n")
+  
+  #notify that image deletion has completed
+  sys.stdout.write("\n    Image deletion completed.\n")
+  return
+def uploadImage(parameters,clients):
+  """Uploads an image file to OpenStack
+  """
+  
+  ensureGlanceClient(clients)
+  
+  #check that an image with the given name doesn't already exist
+  projectID=getProjectID(clients)
+  images=clients["glance"].images.list(owner=projectID)
+  imageAlreadyExists=False
+  for image in images:
+    if(image.name==parameters["image-name"]):
+      imageAlreadyExists=True
+      break
+  if imageAlreadyExists:
+    raise Exception("an image with the name \""+parameters["image-name"]
+      +" already exists!")
+  
+  sys.stdout.write("  Uploading image file \""+parameters["file-name"]
+    +"\" to image \""+parameters["image-name"]+"\" ")
+  sys.stdout.flush()
+  
+  #guess format from file extension
+  diskFormat=None
+  for fileType in imageFormats:
+    if fileType == parameters["file-name"][-len(fileType):]:
+      diskFormat=fileType
+  
+  #if we couldn't guess image disk format
+  if diskFormat==None:
+    raise Exception("unable to determine image type from file name \""
+      +parameters["file-name"]+"\" expecting an extension of one of "
+      +str(imageFormats))
+  
+  #TODO: the below commands wait for completion to return, would be good to 
+  #do it in a separate thread and check for completion so that we can let 
+  #the user know that the script is still doing something.
+  
+  #create an image
+  image=clients["glance"].images.create(name=parameters["image-name"])
+  imageID=image.id
+  image.update(data=open(parameters["file-name"],'rb'),disk_format=diskFormat
+    ,container_format=containerFormat)
+
+  #wait for image to be active
+  imageNotActive=True
+  iter=0
+  while imageNotActive and iter<OSNumChecks:
+    
+    #get image
+    images=clients["glance"].images.list(owner=projectID)
+    for image in images:
+      if(image.id==imageID):
+        if(image.status=="active"):
+          imageNotActive=False
+          break
+    #wait some amount of time before checking again
+    sys.stdout.write(".")
+    sys.stdout.flush()
+    time.sleep(OSCheckWaitTime)
+    iter+=1
+  
+  #check that we haven't timed out
+  if iter>=OSNumChecks and imageNotActive:
+    raise Exception("Timed out waiting for image to upload.\n")
+  
+  #notify that termination has completed
+  sys.stdout.write("\n    Upload completed.\n")
+  return
+def deleteVolume(parameters,clients):
+  """Deletes a volume
+  """
+  
+  ensureCinderClient(clients)
+  
+  #get the volume to image
+  volumeToDelete=None
+  projectID=getProjectID(clients)
+  volumes=clients["cinder"].volumes.list()
+  for volume in volumes:
+    if volume.name==parameters["volume"] or volume.id==parameters["volume"]:
+      volumeToDelete=volume
+      break
+  
+  if volumeToDelete==None:
+    raise Exception("volume with name or id \""+parameters["volume"]+"\" not found!")
+  
+  sys.stdout.write("  Deleting volume \""+parameters["volume"]+"\" ")
+  sys.stdout.flush()
+  
+  volumeID=volumeToDelete.id
+  volumeToDelete.delete()
+  
+  #check that the deletion has completed
+  volumeExists=True
+  iter=0
+  while volumeExists and iter<OSNumChecks:
+    
+    volumes=clients["cinder"].volumes.list()
+    volumeExists=False
+    for volume in volumes:
+      if volume.id==volumeID:
+        volumeExists=True
+        break
+    
+    #wait some amount of time before checking again
+    sys.stdout.write(".")
+    sys.stdout.flush()
+    time.sleep(OSCheckWaitTime)
+    iter+=1
+  
+  #check that we haven't timed out
+  if iter>=OSNumChecks and volumeExists:
+    raise Exception("Timed out waiting for volume deletion to complete.\n")
+  
+  #notify that termination has completed
+  sys.stdout.write("\n    Deletion completed.\n")
+  return
+def createVolumeFromImage(parameters,clients):
+  """
+  """
+  
+  ensureGlanceClient(clients)
+  ensureCinderClient(clients)
+  
+  #Get a list of images owned by the current user
+  projectID=getProjectID(clients)
+  images=clients["glance"].images.list(owner=projectID)
+  
+  #find the image to create volume from
+  imageToUse=None
+  for image in images:
+    if(image.name==parameters["image"] or image.id==parameters["image"]):
+      imageToUse=image
+      break
+  
+  #if image not found warn that nothing is being done
+  if imageToUse==None:
+    raise Exception("no image owned by the current user with name or id \""\
+      +parameters["image"]+"\" was found.\n")
+  
+  sys.stdout.write("  Creating volume \""+parameters["volume-name"]
+    +"\" from image \""+parameters["image"]+"\" ")
+  sys.stdout.flush()
+  
+  #create the volume
+  volume=clients["cinder"].volumes.create(size=parameters["size"]
+    ,name=parameters["volume-name"],imageRef=imageToUse.id)
+  
+  volumeID=volume.id
+  
+  #check that the volume creation has completed
+  volumeDoesNotExists=True
+  iter=0
+  numChecks=int(float(parameters["size"])/gbPers/float(OSCheckWaitTime))
+  while volumeDoesNotExists and iter<numChecks:
+    
+    volumes=clients["cinder"].volumes.list()
+    for volume in volumes:
+      if volume.id==volumeID:
+        if volume.status=="available":
+          volumeDoesNotExists=False
+        break
+    
+    #wait some amount of time before checking again
+    sys.stdout.write(".")
+    sys.stdout.flush()
+    time.sleep(OSCheckWaitTime)
+    iter+=1
+  
+  #check that we haven't timed out
+  if iter>=OSNumChecks and volumeDoesNotExists:
+    raise Exception("Timed out waiting for volume creation to complete.\n")
+  
+  #notify that creation has completed
+  sys.stdout.write("\n    Creation completed.\n")
+  return
 #When creating new action executor functions, add them to this dictionary
 #the key will be the XML tag under the <parameters> tag (see actions.xsd 
 #scheme for expected xml format).
@@ -538,10 +788,14 @@ def associateFloatingIP(parameters,clients):
 #for that action and add that as a choice under the "parameters-type" XML element
 #type. See existing parameter-type.xsd xml type entries, e.g. instance-create.
 exeFuncs={
-  "instance-terminate":instanceTerminate
-  ,"volume-create-image":volumeCreateImage
+  "terminate-instance":terminateInstance
+  ,"create-image-from-volume":createImageFromVolume
   ,"download-image":downloadImage
-  ,"instance-create":instanceCreate
+  ,"create-instance":createInstance
   ,"attach-volume":attachVolume
   ,"associate-floating-ip":associateFloatingIP
+  ,"delete-image":deleteImage
+  ,"upload-image":uploadImage
+  ,"delete-volume":deleteVolume
+  ,"create-volume-from-image":createVolumeFromImage
   }

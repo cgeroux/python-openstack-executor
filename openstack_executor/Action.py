@@ -64,7 +64,7 @@ class Action(object):
     
     #if we haven't yet parsed out the ID from the do so now
     if self.ID==None:
-      self.ID=self.XML.find("ID").text
+      self.ID=self.XML.find("id").text
     return self.ID
   def getParameters(self):
     """

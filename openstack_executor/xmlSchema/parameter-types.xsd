@@ -1,50 +1,111 @@
 <xs:schema 
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:pt="parameterTypes"
-  xmlns:ip="IP"
+  xmlns:cm="cm"
   targetNamespace="parameterTypes"
   delemntFormDefault="qualified">
   
-  <xs:import schemaLocation="IP.xsd" namespace="IP" />
+  <xs:import schemaLocation="common.xsd" namespace="cm" />
   
   <!--Add new action setting types here to be chosen under the "parameters" xml element-->
   <xs:complexType name="parameters-type">
     <xs:choice>
-      <xs:element name="instance-create" type="pt:instance-create-type"/>
-      <xs:element name="instance-terminate" type="pt:instance-terminate-type"/>
-      <xs:element name="volume-create-image" type="pt:volume-create-image-type"/>
+      <xs:element name="create-instance" type="pt:create-instance-type"/>
+      <xs:element name="terminate-instance" type="pt:terminate-instance-type"/>
+      <xs:element name="create-image-from-volume" type="pt:create-image-from-volume-type"/>
       <xs:element name="download-image" type="pt:download-image-type"/>
       <xs:element name="attach-volume" type="pt:attach-volume-type" />
-      <xs:element name="associate-floating-ip" type="pt:associate-floating-ip" />
+      <xs:element name="associate-floating-ip" type="pt:associate-floating-ip-type" />
+      <xs:element name="delete-image" type="pt:delete-image-type" />
+      <xs:element name="upload-image" type="pt:upload-image-type" />
+      <xs:element name="delete-volume" type="pt:delete-volume-type" />
+      <xs:element name="create-volume-from-image" type="pt:create-volume-from-image-type" />
     </xs:choice>
   </xs:complexType>
   
+  <!--Action types-->
+  
   <!--Add entries for new action setting types listed in above parameters-type xml type below.-->
   
-  <xs:complexType name="instance-create-type">
+  <xs:complexType name="create-instance-type">
     <xs:all>
-      <xs:element name="name" type="pt:non-empty-str" />
-      <xs:element name="flavor" type="pt:non-empty-str" />
+      <xs:element name="name" type="cm:non-empty-str" />
+      <xs:element name="flavor" type="cm:non-empty-str" />
       <xs:element name="instance-count" type="xs:int" minOccurs="0"/>
       <xs:element name="instance-boot-source" type="pt:instance-boot-source-type" />
-      <xs:element name="network" type="pt:non-empty-str" minOccurs="0" />
+      <xs:element name="network" type="cm:non-empty-str" minOccurs="0" />
     </xs:all>
   </xs:complexType>
   
-  <xs:complexType name="instance-terminate-type">
+  <xs:complexType name="terminate-instance-type">
     <xs:all>
-      <xs:element name="instance" type="pt:non-empty-str" />
+      <xs:element name="instance" type="cm:non-empty-str" />
     </xs:all>
   </xs:complexType>
   
-  <xs:complexType name="volume-create-image-type">
+  <xs:complexType name="create-image-from-volume-type">
     <xs:all>
-      <xs:element name="volume" type="pt:non-empty-str" />
-      <xs:element name="image-name" type="pt:non-empty-str" />
+      <xs:element name="volume" type="cm:non-empty-str" />
+      <xs:element name="image-name" type="cm:non-empty-str" />
       <xs:element name="format" type="pt:image-format-type" minOccurs="0" />
     </xs:all>
   </xs:complexType>
   
+  <xs:complexType name="download-image-type">
+    <xs:all>
+      <xs:element name="image" type="cm:non-empty-str" />
+      <xs:element name="file-name" type="cm:non-empty-str" />
+      <xs:element name="public-image" type="xs:boolean" minOccurs="0"/><!--by default this is false-->
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="attach-volume-type">
+    <xs:all>
+      <xs:element name="instance" type="cm:non-empty-str" />
+      <xs:element name="volume" type="cm:non-empty-str" />
+      <xs:element name="device" type="cm:non-empty-str" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="associate-floating-ip-type">
+    <xs:all>
+      <xs:element name="ip" type="cm:IP-type" minOccurs="0"/>
+      <xs:element name="pool" type="cm:non-empty-str" minOccurs="0"/>
+      <xs:element name="instance" type="cm:non-empty-str"/>
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="delete-image-type">
+    <xs:all>
+      <xs:element name="image" type="cm:non-empty-str"/>
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="upload-image-type">
+    <xs:all>
+      <xs:element name="image-name" type="cm:non-empty-str"/>
+      <xs:element name="file-name" type="cm:non-empty-str"/>
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="delete-volume-type">
+    <xs:all>
+      <xs:element name="volume" type="cm:non-empty-str"/>
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="create-volume-from-image-type">
+    <xs:all>
+      <xs:element name="volume-name" type="cm:non-empty-str"/>
+      <xs:element name="image" type="cm:non-empty-str"/><!--name or id-->
+      <xs:element name="size" type="xs:int"/><!--in GB-->
+    </xs:all>
+  </xs:complexType>
+  
+  
+  <!--Supporting types-->
+  
+  <!--These formats are also specified in createOSClientsV3/V2.py-->
   <xs:simpleType name="image-format-type">
     <xs:restriction base="xs:string">
       <xs:enumeration value="raw"/>
@@ -54,60 +115,31 @@
     </xs:restriction>
   </xs:simpleType>
   
-  <xs:complexType name="download-image-type">
-    <xs:all>
-      <xs:element name="image" type="pt:non-empty-str" />
-      <xs:element name="file-name" type="pt:non-empty-str" />
-      <xs:element name="public-image" type="xs:boolean" minOccurs="0"/><!--by default this is false-->
-    </xs:all>
-  </xs:complexType>
-  
-  
-  <xs:complexType name="attach-volume-type">
-    <xs:all>
-      <xs:element name="instance" type="pt:non-empty-str" />
-      <xs:element name="volume" type="pt:non-empty-str" />
-      <xs:element name="device" type="pt:non-empty-str" minOccurs="0"/>
-    </xs:all>
-  </xs:complexType>
-  
-  <xs:complexType name="associate-floating-ip">
-    <xs:all>
-      <xs:element name="ip" type="ip:IP-type" minOccurs="0"/>
-      <xs:element name="pool" type="pt:non-empty-str" minOccurs="0"/>
-      <xs:element name="instance" type="pt:non-empty-str"/>
-    </xs:all>
-  </xs:complexType>
-  
   <xs:complexType name="instance-boot-source-type">
     <xs:choice>
-      <xs:element name="volume" type="pt:non-empty-str"/>
-      <xs:element name="image" type="pt:non-empty-str"/>
-      <xs:element name="snapshot" type="pt:non-empty-str"/>
+      <xs:element name="volume" type="cm:non-empty-str"/>
+      <xs:element name="image" type="cm:non-empty-str"/>
+      <xs:element name="snapshot" type="cm:non-empty-str"/>
       <xs:element name="image-create-volume" type="pt:image-create-volume-type" />
       <xs:element name="volume-snapshot-create-volume" type="pt:volume-snapshot-create-volume-type" />
     </xs:choice>
   </xs:complexType>
   
+  <!--A boot source type-->
   <xs:complexType name="image-create-volume-type">
     <xs:all>
-      <xs:element name="image-name" type="pt:non-empty-str"/>
+      <xs:element name="image-name" type="cm:non-empty-str"/>
       <xs:element name="volume-size" type="xs:float"/>
-      <xs:element name="device-name" type="pt:non-empty-str"/>
+      <xs:element name="device-name" type="cm:non-empty-str"/>
     </xs:all>
   </xs:complexType>
   
+  <!--A boot source type-->
   <xs:complexType name="volume-snapshot-create-volume-type">
     <xs:all>
-      <xs:element name="volume-snapshot" type="pt:non-empty-str" />
-      <xs:element name="device-name" type="pt:non-empty-str" />
+      <xs:element name="volume-snapshot" type="cm:non-empty-str" />
+      <xs:element name="device-name" type="cm:non-empty-str" />
     </xs:all>
   </xs:complexType>
-  
-  <xs:simpleType name="non-empty-str">
-     <xs:restriction base="xs:string">
-       <xs:minLength value="1"/>
-     </xs:restriction>
-  </xs:simpleType>
   
 </xs:schema>
