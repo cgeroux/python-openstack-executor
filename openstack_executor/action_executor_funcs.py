@@ -2,8 +2,9 @@ from __future__ import print_function
 import time
 import sys
 import novaclient
-import utilFuncs
-from openstack_executor import authVersion
+from . import utilFuncs 
+from .openstack_executor import authVersion
+from . import formats
 
 OSCheckWaitTime=3#time to wait between polling OS to check for action 
   #completion in seconds
@@ -19,6 +20,10 @@ elif authVersion=="3":
   from .createOSClientsV3 import *
 else:
   raise Exception("Unexpected authorization version \""+authVersion+"\"")
+
+#TODO: add a parameters["force"] option to items which fail when an 
+#image/volume/instance already exists with the specified name which 
+#deletes the duplicate before proceeding.
 
 def terminateInstance(parameters,clients):
   """Terminate an instance
@@ -93,7 +98,8 @@ def createImageFromVolume(parameters,clients):
       break
   
   if volumeToImage==None:
-    raise Exception("volume with name or id \""+parameters["volume"]+"\" not found!")
+    raise Exception("volume with name or id \""+parameters["volume"]
+      +"\" not found!")
   
   #check if there is an image with that name already
   #technically there can be multiple images with the same name
@@ -116,7 +122,7 @@ def createImageFromVolume(parameters,clients):
     diskFormat=parameters["format"]
   else:
     diskFormat="qcow2"
-  volumeToImage.upload_to_image(force,imageName,containerFormat,diskFormat)
+  volumeToImage.upload_to_image(force,imageName,formats.containerFormat,diskFormat)
   
   #check that the image has been created
   imageNotActive=True
@@ -189,7 +195,7 @@ def downloadImage(parameters,clients):
   sys.stdout.flush()
   
   #download the image
-  imageFile=open(fileName,'w+')
+  imageFile=open(fileName,'bw+')
   chunks=imageToDownLoad.data()
   imageSize=chunks.length
   downloaded=0
@@ -628,7 +634,7 @@ def uploadImage(parameters,clients):
   
   #guess format from file extension
   diskFormat=None
-  for fileType in imageFormats:
+  for fileType in formats.imageFormats:
     if fileType == parameters["file-name"][-len(fileType):]:
       diskFormat=fileType
   
@@ -636,7 +642,7 @@ def uploadImage(parameters,clients):
   if diskFormat==None:
     raise Exception("unable to determine image type from file name \""
       +parameters["file-name"]+"\" expecting an extension of one of "
-      +str(imageFormats))
+      +str(formats.imageFormats))
   
   #TODO: the below commands wait for completion to return, would be good to 
   #do it in a separate thread and check for completion so that we can let 
@@ -646,7 +652,7 @@ def uploadImage(parameters,clients):
   image=clients["glance"].images.create(name=parameters["image-name"])
   imageID=image.id
   image.update(data=open(parameters["file-name"],'rb'),disk_format=diskFormat
-    ,container_format=containerFormat)
+    ,container_format=formats.containerFormat)
 
   #wait for image to be active
   imageNotActive=True

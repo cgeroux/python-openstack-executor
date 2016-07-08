@@ -1,0 +1,122 @@
+<actions version="0.0">
+  
+  <action>
+    <id>vm-terminate</id><!--Unique name to identify the action-->
+    <parameters><!--settings describing the type of action and what it should do-->
+      <terminate-instance><!--This action will terminate an instance (virtual machine)-->
+        <instance>test-backup</instance><!--name or id of the instance to terminate-->
+      </terminate-instance>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>make-data-image</id>
+    <dependencies>
+      <dependency>vm-terminate</dependency><!--this action is dependent on the 
+        action with id vm-terminate. This means that it will not be performed 
+        until after the dependency has been successfully completed.-->
+    </dependencies>
+    <parameters>
+      <create-image-from-volume><!--this action creates an image from a volume-->
+        <volume>data</volume><!--name or id of the volume to create the image from-->
+        <image-name>data-image</image-name><!--name of the newly create image. 
+          There can not already be an image with this name-->
+        <format>vdi</format><!--Acceptable values are "raw", "qcow2", "vdi"
+          , and "vmdk" -->
+      </create-image-from-volume>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>download-data-image</id>
+    <dependencies>
+      <dependency>make-data-image</dependency>
+    </dependencies>
+    <parameters>
+      <download-image><!--this action downloads an image to the local machine-->
+        <image>data-image</image><!--name or id of the image to download-->
+        <file-name>data-image</file-name><!--file name to give the image 
+          without extension. The extension will be automatically added 
+          based on the format of the image.-->
+      </download-image>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>make-root-image</id>
+    <dependencies>
+      <dependency>vm-terminate</dependency>
+    </dependencies>
+    <parameters>
+      <create-image-from-volume>
+        <volume>root</volume>
+        <image-name>root-image</image-name>
+        <format>vmdk</format>
+      </create-image-from-volume>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>download-root-image</id>
+    <dependencies>
+      <dependency>make-root-image</dependency>
+    </dependencies>
+    <parameters>
+      <download-image>
+        <image>root-image</image>
+        <file-name>root-image</file-name>
+      </download-image>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>vm-create</id>
+    <dependencies>
+      <dependency>make-data-image</dependency>
+      <dependency>make-root-image</dependency>
+    </dependencies>
+    <parameters>
+      <create-instance><!-- creates an instance in OpenStack -->
+        <name>test-backup</name><!-- name of the instance to create. There can 
+          not already be an instance with this name. -->
+        <flavor>c4-15gb-205</flavor><!-- flavor of the instance to create. It 
+          must match one of those available in the OpenStack environment being used-->
+        <instance-boot-source><!-- select the instance boot source. -->
+          <volume>root</volume><!-- name or id of the volume to boot from. 
+            Currently the only boot source implemented is from a volume. -->
+        </instance-boot-source>
+      </create-instance>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>add-ip</id>
+    <dependencies>
+      <dependency>vm-create</dependency>
+    </dependencies>
+    <parameters>
+      <associate-floating-ip><!-- associate a floating ip with an instance -->
+        <instance>test-backup</instance><!-- name or id of the instance to associate the 
+          floating ip with.-->
+        <ip>206.167.123.123</ip><!-- ip to associate. This is optional, if not 
+          given it will try to allocate a new floating ip from a specified or 
+          default pool (the first one in the list returned) and assign that ip.-->
+      </associate-floating-ip>
+    </parameters>
+  </action>
+  
+  <action>
+    <id>attach-data-disk</id>
+    <dependencies>
+      <dependency>vm-create</dependency>
+    </dependencies>
+    <parameters>
+      <attach-volume><!-- attach a volume to an instance -->
+        <instance>test-backup</instance><!-- name or id of the instance to 
+          attach the volume to -->
+        <volume>data</volume><!-- name or id of the volume to attach -->
+      </attach-volume>
+    </parameters>
+  </action>
+  
+</actions>

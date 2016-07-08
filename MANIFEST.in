@@ -1,4 +1,7 @@
 include LICENSE
 include openstack_executor/xmlSchema/actions.xsd
-include openstack_executor/xmlSchema/IP.xsd
+include openstack_executor/xmlSchema/common.xsd
 include openstack_executor/xmlSchema/parameter-types.xsd
+include openstack_executor/example_action_xml_files/backup_server.xml
+include openstack_executor/example_action_xml_files/delete_server_volumes_and_images.xml
+include openstack_executor/example_action_xml_files/restore_from_backup.xml

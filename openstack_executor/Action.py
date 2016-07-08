@@ -1,6 +1,7 @@
 from __future__ import print_function
-from .xmlToDict import xmlToDict
+from lxml import etree
 import sys
+from .xmlToDict import xmlToDict
 
 class Action(object):
   """
@@ -80,7 +81,10 @@ class Action(object):
     
     if self.type==None:
       xmlParameters=self.XML.find("parameters")
-      self.type=xmlParameters[0].tag
+      for parameter in xmlParameters:
+        if not (parameter.tag is etree.Comment):
+          self.type=parameter.tag
+          break
     
     return self.type
   def getDependencies(self):
@@ -92,7 +96,8 @@ class Action(object):
       dependencies={}
       if xmlDependencies!=None:
         for dependency in xmlDependencies:
-          dependencies[dependency.text]=False
+          if not (dependency.tag is etree.Comment):
+            dependencies[dependency.text]=False
       self.dependencies=dependencies
     return self.dependencies.keys()
   def addDependent(self,dependent):
@@ -108,8 +113,10 @@ class Action(object):
     """
     
     if not self.executed:
+      
       sys.stdout.write("Executing action \""+self.getID()+"\"\n")
       sys.stdout.flush()
+      
       Action.exeFuncs[self.getType()](self.getParameters(),Action.clients)
       
       #once finished need to tell dependents we are done

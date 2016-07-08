@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-__version__ = "0.0.0"
+__version__ = "1.0.0"
 
 import optparse as op
 from lxml import etree
@@ -46,6 +46,12 @@ def main():
   
   #parse xml file
   tree=etree.parse(args[0])
+  
+  #strip out any comments in xml
+  comments=tree.xpath('//comment()')
+  for c in comments:
+    p=c.getparent()
+    p.remove(c)
   
   #validate against schema
   schema.assertValid(tree)

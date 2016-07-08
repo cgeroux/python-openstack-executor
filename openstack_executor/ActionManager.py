@@ -1,5 +1,5 @@
-from .Action import Action
 from lxml import etree
+from .Action import Action
 
 class ActionManager(object):
   """
