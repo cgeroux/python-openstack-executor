@@ -8,8 +8,6 @@ glAPIVersion="1"
 import keystoneclient.client as kclient
 ksAPIVersion="2"
 
-from .imageFormats import *
-
 def ensureNovaClient(clients):
   #make sure there is a nova client
   if "nova" not in clients.keys():

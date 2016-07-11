@@ -2,6 +2,7 @@
 import unittest
 from lxml import etree
 
+#this imports the installed version
 from openstack_executor.Action import *
 def instanceTerminateStub(parameters,clients):
   clients["nova"]=None
@@ -23,7 +24,7 @@ class TestClassActionMethods(unittest.TestCase):
     
     xmlActionStr= '''
       <action>
-        <ID>backup-test-one-dep</ID>
+        <id>backup-test-one-dep</id>
         <dependencies>
           <dependency>VM-termination</dependency>
         </dependencies>
@@ -35,7 +36,6 @@ class TestClassActionMethods(unittest.TestCase):
       </action>'''
     xmlAction=etree.fromstring(xmlActionStr)
     self.actionOneDep=Action(xmlAction)
-    #print(dir(Action))
     Action.exeFuncs={"instance-terminate":instanceTerminateStub}
   def test_getID(self):
     

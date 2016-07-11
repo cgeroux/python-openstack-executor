@@ -1,14 +1,24 @@
 <actions version="0.0">
   
   <action>
+    <id>vm-terminate</id><!--Unique name to identify the action-->
+    <parameters><!--settings describing the type of action and what it should do-->
+      <terminate-instance><!--This action will terminate an instance (virtual machine)-->
+        <instance>test-backup</instance><!--name or id of the instance to terminate-->
+      </terminate-instance>
+    </parameters>
+  </action>
+  
+  <action>
     <id>upload-data-image</id>
     <parameters>
       <upload-image><!-- uploads an image from the local filesystem to your 
         OpenStack project -->
-        <file-name>./data-image.vmdk</file-name><!-- name of the image file on 
+        <file-name>./data-image.vdi</file-name><!-- name of the image file on 
           your local filesystem -->
         <image-name>data-image</image-name><!-- name of the newly uploaded 
           image. There can not already be an image with this name.-->
+        <already-exists>overwrite</already-exists>
       </upload-image>
     </parameters>
   </action>
@@ -17,8 +27,9 @@
     <id>upload-root-image</id>
     <parameters>
       <upload-image>
-        <file-name>./root-image.vmdk</file-name>
+        <file-name>./root-image.vdi</file-name>
         <image-name>root-image</image-name>
+        <already-exists>overwrite</already-exists>
       </upload-image>
     </parameters>
   </action>
@@ -27,6 +38,7 @@
     <id>create-data-volume</id>
     <dependencies>
       <dependency>upload-data-image</dependency>
+      <dependency>vm-terminate</dependency>
     </dependencies>
     <parameters>
       <create-volume-from-image><!-- creates a volume from an image -->
@@ -36,6 +48,7 @@
           volume from -->
         <size>20</size><!-- size of the volume to create in GB. This must be at 
           least as large as the image. -->
+        <already-exists>overwrite</already-exists>
       </create-volume-from-image>
     </parameters>
   </action>
@@ -44,12 +57,14 @@
     <id>create-root-volume</id>
     <dependencies>
       <dependency>upload-root-image</dependency>
+      <dependency>vm-terminate</dependency>
     </dependencies>
     <parameters>
       <create-volume-from-image>
         <volume-name>root</volume-name>
         <image>root-image</image>
         <size>20</size>
+        <already-exists>overwrite</already-exists>
       </create-volume-from-image>
     </parameters>
   </action>
@@ -65,10 +80,12 @@
     <parameters>
       <create-instance>
         <name>test-backup</name>
-        <flavor>c4-15gb-205</flavor>
+        <!--<flavor>c4-15gb-83</flavor>west cloud-->
+        <flavor>c4-15gb-205</flavor><!--east cloud-->
         <instance-boot-source>
           <volume>root</volume>
         </instance-boot-source>
+        <already-exists>overwrite</already-exists>
       </create-instance>
     </parameters>
   </action>
@@ -81,7 +98,8 @@
     <parameters>
       <associate-floating-ip>
         <instance>test-backup</instance>
-        <ip>206.167.123.123</ip>
+        <ip>206.167.181.71</ip><!--east cloud-->
+        <!--<ip>206.12.96.177</ip>west cloud-->
       </associate-floating-ip>
     </parameters>
   </action>

@@ -99,7 +99,8 @@ class Action(object):
           if not (dependency.tag is etree.Comment):
             dependencies[dependency.text]=False
       self.dependencies=dependencies
-    return self.dependencies.keys()
+    
+    return list(self.dependencies.keys())
   def addDependent(self,dependent):
     """Adds an action which is dependent on this action.
     """

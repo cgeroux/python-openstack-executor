@@ -22,7 +22,13 @@
         <image-name>data-image</image-name><!--name of the newly create image. 
           There can not already be an image with this name-->
         <format>vdi</format><!--Acceptable values are "raw", "qcow2", "vdi"
-          , and "vmdk" -->
+          , and "vmdk". The "raw" format seems to take up the most space.-->
+        <already-exists>overwrite</already-exists><!-- dictates the behaviour 
+          when an image with the given name already exists. Possible options are 
+            skip: skip performing the action assuming it is already completed 
+            overwrite: remove existing volume/image/instance before proceeding 
+              with the action which will replace it
+            fail: provide an error message and halt-->
       </create-image-from-volume>
     </parameters>
   </action>
@@ -38,6 +44,7 @@
         <file-name>data-image</file-name><!--file name to give the image 
           without extension. The extension will be automatically added 
           based on the format of the image.-->
+        <already-exists>overwrite</already-exists>
       </download-image>
     </parameters>
   </action>
@@ -51,7 +58,8 @@
       <create-image-from-volume>
         <volume>root</volume>
         <image-name>root-image</image-name>
-        <format>vmdk</format>
+        <format>vdi</format>
+        <already-exists>overwrite</already-exists>
       </create-image-from-volume>
     </parameters>
   </action>
@@ -65,6 +73,7 @@
       <download-image>
         <image>root-image</image>
         <file-name>root-image</file-name>
+        <already-exists>overwrite</already-exists>
       </download-image>
     </parameters>
   </action>
@@ -79,12 +88,18 @@
       <create-instance><!-- creates an instance in OpenStack -->
         <name>test-backup</name><!-- name of the instance to create. There can 
           not already be an instance with this name. -->
-        <flavor>c4-15gb-205</flavor><!-- flavor of the instance to create. It 
-          must match one of those available in the OpenStack environment being used-->
+
+        <!--<flavor>c4-15gb-83</flavor>west cloud-->
+        <flavor>c4-15gb-205</flavor><!--east cloud-->
+        <!-- flavor of the instance to create. It must match one of those 
+          available in the OpenStack environment being used-->
+          
+        <key-name>thekey</key-name><!-- name of the public key already created in OpenStack-->
         <instance-boot-source><!-- select the instance boot source. -->
           <volume>root</volume><!-- name or id of the volume to boot from. 
             Currently the only boot source implemented is from a volume. -->
         </instance-boot-source>
+        <already-exists>overwrite</already-exists>
       </create-instance>
     </parameters>
   </action>
@@ -96,11 +111,13 @@
     </dependencies>
     <parameters>
       <associate-floating-ip><!-- associate a floating ip with an instance -->
-        <instance>test-backup</instance><!-- name or id of the instance to associate the 
-          floating ip with.-->
-        <ip>206.167.123.123</ip><!-- ip to associate. This is optional, if not 
+        <instance>test-backup</instance><!-- name or id of the instance to 
+          associate the floating ip with.-->
+        <ip>206.167.181.71</ip><!-- ip to associate. This is optional, if not 
           given it will try to allocate a new floating ip from a specified or 
-          default pool (the first one in the list returned) and assign that ip.-->
+          default pool (the first one in the list returned) and assign that 
+          ip. If running multiple times it is good to explicitly set this. 
+          As you will quickly run out of your ip quota.-->
       </associate-floating-ip>
     </parameters>
   </action>

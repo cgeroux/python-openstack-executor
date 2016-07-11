@@ -34,6 +34,8 @@
       <xs:element name="instance-count" type="xs:int" minOccurs="0"/>
       <xs:element name="instance-boot-source" type="pt:instance-boot-source-type" />
       <xs:element name="network" type="cm:non-empty-str" minOccurs="0" />
+      <xs:element name="key-name" type="cm:non-empty-str" minOccurs="0" />
+      <xs:element name="already-exists" type="pt:already-exists-type" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
   
@@ -48,6 +50,7 @@
       <xs:element name="volume" type="cm:non-empty-str" />
       <xs:element name="image-name" type="cm:non-empty-str" />
       <xs:element name="format" type="pt:image-format-type" minOccurs="0" />
+      <xs:element name="already-exists" type="pt:already-exists-type" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
   
@@ -56,6 +59,7 @@
       <xs:element name="image" type="cm:non-empty-str" />
       <xs:element name="file-name" type="cm:non-empty-str" />
       <xs:element name="public-image" type="xs:boolean" minOccurs="0"/><!--by default this is false-->
+      <xs:element name="already-exists" type="pt:already-exists-type" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
   
@@ -85,6 +89,7 @@
     <xs:all>
       <xs:element name="image-name" type="cm:non-empty-str"/>
       <xs:element name="file-name" type="cm:non-empty-str"/>
+      <xs:element name="already-exists" type="pt:already-exists-type" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
   
@@ -99,6 +104,7 @@
       <xs:element name="volume-name" type="cm:non-empty-str"/>
       <xs:element name="image" type="cm:non-empty-str"/><!--name or id-->
       <xs:element name="size" type="xs:int"/><!--in GB-->
+      <xs:element name="already-exists" type="pt:already-exists-type" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
   
@@ -112,6 +118,14 @@
       <xs:enumeration value="qcow2"/>
       <xs:enumeration value="vdi"/>
       <xs:enumeration value="vmdk"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="already-exists-type">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="skip"/>
+      <xs:enumeration value="overwrite"/>
+      <xs:enumeration value="fail"/>
     </xs:restriction>
   </xs:simpleType>
   

@@ -2,6 +2,7 @@
 import unittest
 from lxml import etree
 
+#this imports the installed version
 from openstack_executor.ActionManager import *
 
 order=0
@@ -25,13 +26,13 @@ class TestClassActionManagerMethods(unittest.TestCase):
   #  xmlActionManagerStr= '''
   #    <actions>
   #      <action>
-  #        <ID>backup-test-one-dep</ID>
+  #        <id>backup-test-one-dep</id>
   #        <dependencies>
   #          <dependency>VM-termination</dependency>
   #        </dependencies>
   #      </action>
   #      <action>
-  #        <ID>VM-termination</ID>
+  #        <id>VM-termination</id>
   #      </action>
   #    </actions>'''
   #  xmlActionManager=etree.fromstring(xmlActionManagerStr)
@@ -40,7 +41,7 @@ class TestClassActionManagerMethods(unittest.TestCase):
     xmlActionManagerStr= '''
       <actions>
         <action>
-          <ID>backup-test-one-dep</ID>
+          <id>backup-test-one-dep</id>
           <dependencies>
             <dependency>VM-termination</dependency>
           </dependencies>
@@ -52,10 +53,10 @@ class TestClassActionManagerMethods(unittest.TestCase):
     xmlActionManagerStr= '''
       <actions>
         <action>
-          <ID>backup-test-one-dep</ID>
+          <id>backup-test-one-dep</id>
         </action>
         <action>
-          <ID>backup-test-one-dep</ID>
+          <id>backup-test-one-dep</id>
         </action>
       </actions>'''
     xmlActionManager=etree.fromstring(xmlActionManagerStr)
@@ -65,7 +66,7 @@ class TestClassActionManagerMethods(unittest.TestCase):
       <actions>
         
         <action>
-          <ID>step0</ID>
+          <id>step0</id>
           <parameters>
             <step0>
             </step0>
@@ -74,7 +75,7 @@ class TestClassActionManagerMethods(unittest.TestCase):
         </action>
         
         <action>
-          <ID>step1</ID>
+          <id>step1</id>
           <parameters>
             <step1>
             </step1>

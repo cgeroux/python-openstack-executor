@@ -8,6 +8,7 @@ import os
 from .ActionManager import ActionManager
 
 authVersion="2"#default version is 2
+options=None
 
 class MissingEnvVariable(Exception):
   pass
@@ -16,7 +17,26 @@ def addParserOptions(parser):
   """Adds command line options
   """
   
-  pass
+  group=op.OptionGroup(parser,title="",description="These options force a "
+    +"global behaviour when ever an existing resource with the same name of "
+    +"the one being created is encountered. For finner grained control use "
+    +"the <already-exists> element in an action's specific parameters "
+    +"element, (e.g. <create-instance>, <download-image> etc.).")
+  
+  group.add_option("--overwrite-all",action="store_const"
+    ,dest="alreadyExistsGlobal",const="overwrite"
+    ,help="Forces global overwrite behaviour, will overwrite existing "
+    +"resource when encountered [not default].",default=None)
+  group.add_option("--skip-all",action="store_const"
+    ,dest="alreadyExistsGlobal",const="skip"
+    ,help="Forces global skip behaviour, will skip creating a resource "
+    +"when it already exists [not default].",default=None)
+  group.add_option("--fail-all",action="store_const"
+    ,dest="alreadyExistsGlobal",const="fail"
+    ,help="Forces global fail behaviour, will throw an exception when "
+    +"creating a resource when it already exists [not default]."
+    ,default=None)
+  parser.add_option_group(group)
 def parseOptions():
   """Parses command line options
   
@@ -32,6 +52,8 @@ def parseOptions():
   #parse command line options
   return parser.parse_args()
 def main():
+  
+  global options
   
   #parse command line options
   (options,args)=parseOptions()
@@ -81,6 +103,8 @@ def main():
           +"both v2 and v3 authentication methods, did you source your "
           +"*-openrc.sh file?")
     authVersion="3"
+  
+  print("Authenticating against \""+os.environ["OS_AUTH_URL"]+"\"")
   
   #Parse XML Actions
   xmlActions=tree.getroot()

@@ -18,11 +18,10 @@ These actions can do the following:
 
 and more actions may be added with time as need arises.
 
-The below instructions on how to setup and use the openstack-executor
-describe the specific process of doing so in the ACENET environment. While 
-they can be followed for other Linux distributions and environments, one 
-may need to know steps specific to their environment at certain points within 
-these instructions which are not mentioned here.
+The below instructions describe how to setup and use the openstack-executor 
+in the ACENET environment. While they can be followed for other Linux 
+distributions and environments, some steps may need to be modified for the 
+specific Linux environment.
 
 
 Requirements
@@ -31,7 +30,7 @@ Requirements
 + Python2.6+
     
     Already available on ACENET machines and most current Linux 
-    distributions.
+    distributions. Tested specifically with Python3.4.1 and Python2.7.10
 
 + pip
     
@@ -43,13 +42,17 @@ Requirements
 + lxml
   
 + OpenStack python clients
+  
+    These clients change rapidly, so it is likely important to use the same
+    version this code was developed and tested with. Currently that is 2.6.0.
+    See below installation instructions on how to get the correct version.
 
 + An OpenStack rc file
   
-  Downloaded from your OpenStack dashboard under Project->Compute->
-  Access & Security->API Access->Download OpenStack RC File
-  or on east cloud this is now "Download OpenStack RC File v3" the
-  "Download OpenStack RC File v2" option will not work for most users.
+    Downloaded from your OpenStack dashboard under Project->Compute->
+    Access & Security->API Access->Download OpenStack RC File
+    or on east cloud this is now "Download OpenStack RC File v3" the
+    "Download OpenStack RC File v2" option will not work for most users.
 
 
 Setting up your environment
@@ -90,17 +93,17 @@ Getting OpenStack python clients
 
 As with lxml the command is:
 
-  $ pip install --user python-openstackclient
+  $ pip install --user python-openstackclient==2.6.0
 
 Installation openstack-executor
 ===============================
 
-To install to your home directory run:
+From inside the python-openstack-executor directory run:
 
   $ python setup.py install --user
 
-The --record <filename> option will output a list of files created during 
-install.
+to install to your home directory. The --record <filename> option will output 
+a list of files created during install.
 
 
 Usage
@@ -110,9 +113,10 @@ To run the program use the command:
   
   $openstack-executor ACTIONS.XML
   
-where the ACTIONS.xml file describes the actions you wish to perform. The 
-"examples_action_xml_files" directory contains a number of example files of 
-how this ACTIONS.xml input file might look. This directory can be found either 
+where the ACTIONS.xml file describes the actions you wish to perform. A "-h" 
+or "--help" option can be specified to also describe usage and available 
+options. The "examples_action_xml_files" directory contains a number of 
+examples of this ACTIONS.xml input file. This directory can be found either 
 in the original source code under the 
 "python-openstack-executor/openstack_executor" directory or in the case of a 
 user install in 
@@ -159,6 +163,26 @@ If you developing openstack-executor these might be helpful notes.
 
   $ python openstack_executor/tests/<test_script>.py
   
+  This however, will import modules from the installation location so for changes 
+  in your tested code to take effect they must be "installed" first.
+  
 + To run all tests showing only results (will not show stdout):
 
   $ python setup.py test
+  
+  
+Integration Testing
+-------------------
+
++ run the example xml files in openstack_executor/example_action_xml_files
+
++ this requires that at the very least
++ + a bootable volume named "root"
++ + an attachable volume named "data"
++ + the ip address 206.12.96.177 available to associate with a VM
++ + the flavor "c4-15gb-205" 
+
++ the expected order is 
++ + backup_server.xml
++ + delete_server_volumes_and_images.xml
++ + restore_from_backup.xml

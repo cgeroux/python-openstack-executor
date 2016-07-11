@@ -2,18 +2,19 @@ from __future__ import print_function
 import time
 import sys
 import novaclient
+import threading
 from . import utilFuncs 
-from .openstack_executor import authVersion
+from .openstack_executor import authVersion, options
 from . import formats
 
-OSCheckWaitTime=3#time to wait between polling OS to check for action 
+OSCheckWaitTime=1#time to wait between polling OS to check for action 
   #completion in seconds
-OSNumChecks=20#number of times to check for action completion
+OSNumChecks=60#number of times to check for action completion
 
 #assume rate of creation, this is based on a 10Gb
 #volume with 805Mb of data taking 57s to create an image from
 gbPers=0.01
-
+waitAnimation="|\\-/"
 if authVersion=="2":
   from .createOSClientsV2 import *
 elif authVersion=="3":
@@ -21,18 +22,12 @@ elif authVersion=="3":
 else:
   raise Exception("Unexpected authorization version \""+authVersion+"\"")
 
-#TODO: add a parameters["force"] option to items which fail when an 
-#image/volume/instance already exists with the specified name which 
-#deletes the duplicate before proceeding.
-
 def terminateInstance(parameters,clients):
   """Terminate an instance
   """
   
   ensureNovaClient(clients)
-  
-  sys.stdout.write("  Terminating instance \""+parameters["instance"]+"\" ")
-  sys.stdout.flush()
+  currentMessage="  Terminating instance \""+parameters["instance"]+"\""
   
   #get list of servers
   servers=clients["nova"].servers.list()
@@ -64,8 +59,10 @@ def terminateInstance(parameters,clients):
     
     #if server still there, lets wait
     if found:
-      sys.stdout.write(".")
+      sys.stdout.write(currentMessage+" {0}\r".format(
+        waitAnimation[iter%len(waitAnimation)]))
       sys.stdout.flush()
+      
       #wait some amount of time before checking again
       time.sleep(OSCheckWaitTime)
     else:
@@ -105,44 +102,90 @@ def createImageFromVolume(parameters,clients):
   #technically there can be multiple images with the same name
   #but that makes things complicated
   images=clients["glance"].images.list(owner=projectID)
+  
+  alreadyExists="fail"
+  if "already-exists" in parameters.keys():
+    alreadyExists=parameters["already-exists"]
+  
+  #global over-ride
+  if options.alreadyExistsGlobal!=None:
+    alreadyExists=options.alreadyExistsGlobal
+  
   for image in images:
     if(image.name==parameters["image-name"]):
-      raise Exception("an image with the name \""+str(parameters["image-name"])
-        +"\" already exists.")
+      if alreadyExists=="skip":
+        sys.stdout.write("  An image with the name \""
+          +str(parameters["image-name"])
+          +"\" already exists, skipping creation.\n")
+        sys.stdout.flush()
+        return
+      elif alreadyExists=="overwrite":
+        sys.stdout.write("  An image with the name \""
+          +str(parameters["image-name"])
+          +"\" already exists, overwriting.\n")
+        sys.stdout.flush()
+        deleteImage({"image":image.id},clients)
+      else:
+        raise Exception("an image with the name \""
+          +str(parameters["image-name"])+"\" already exists.")
   
-  sys.stdout.write("  Creating image \""+parameters["image-name"]
-    +"\" from volume \""+parameters["volume"]+"\" ")
-  sys.stdout.flush()
+  currentMessage="  Creating image \""+parameters["image-name"] \
+    +"\" from volume \""+parameters["volume"]+"\" "
   
   #create image from volume
   force=True#not sure what this does, a few tests don't indicate a 
     #difference between True of False
-  imageName=parameters["image-name"]
   if "format" in parameters.keys():
     diskFormat=parameters["format"]
   else:
     diskFormat="qcow2"
-  volumeToImage.upload_to_image(force,imageName,formats.containerFormat,diskFormat)
+  volumeToImage.upload_to_image(force,parameters["image-name"]
+    ,formats.containerFormat,diskFormat)
   
+  #check to see if the image has been created
+  imageCreated=False
+  iter=0
+  while not imageCreated and iter<OSNumChecks:
+    
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
+    sys.stdout.flush()
+    
+    images=clients["glance"].images.list(owner=projectID)
+    for image in images:
+
+      if image.name==parameters["image-name"]:
+        imageCreated=True
+        currentMessage="    Image created, uploading volume data to image"
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        break
+        
+
+    
   #check that the image has been created
   imageNotActive=True
   iter=0
-
+  
   #estimate how many times we will check based on the size of the volume
   #this should be a significant overestimate
   numChecks=int(float(volumeToImage.size)/gbPers/float(OSCheckWaitTime))
   while imageNotActive and iter<numChecks:
     
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
+    sys.stdout.flush()
+    
     images=clients["glance"].images.list(owner=projectID)
     for image in images:
+
       if image.name==parameters["image-name"]:
+        
         if image.status=="active":
           imageNotActive=False
           break
     
     #wait some amount of time before checking again
-    sys.stdout.write(".")
-    sys.stdout.flush()
     time.sleep(OSCheckWaitTime)
     iter+=1
       
@@ -190,10 +233,31 @@ def downloadImage(parameters,clients):
   
   #Create a filename to save image to
   fileName=parameters["file-name"]+"."+imageToDownLoad.disk_format
+  
+  alreadyExists="fail"
+  if "already-exists" in parameters.keys():
+    alreadyExists=parameters["already-exists"]
+    
+  #global over-ride
+  if options.alreadyExistsGlobal!=None:
+    alreadyExists=options.alreadyExistsGlobal
+  
   sys.stdout.write("  Downloading image \""+parameters["image"]
     +"\" to file \""+fileName+"\" \n")
   sys.stdout.flush()
   
+  #check to see if the file name already exists
+  if os.path.exists(fileName):
+    if alreadyExists=="overwrite":
+      sys.stdout.write("    file already exists, overwriting.\n")
+      sys.stdout.flush()
+    elif alreadyExists=="skip":
+      sys.stdout.write("    file already exists, skipping download.\n")
+      sys.stdout.flush()
+      return
+    else:
+      raise Exception("file with name \""+fileName+"\" already exists!")
+      
   #download the image
   imageFile=open(fileName,'bw+')
   chunks=imageToDownLoad.data()
@@ -214,6 +278,7 @@ def createInstance(parameters,clients):
   """
   
   ensureNovaClient(clients)
+  ensureCinderClient(clients)
   
   #check that instance name is a valid hostname
   utilFuncs.validateHostName(parameters["name"])
@@ -260,8 +325,8 @@ def createInstance(parameters,clients):
         
     #none to choose from
     if len(networkNames)<1:
-      raise Exception("no networks found if there is one available that wasn't "
-        +"detected specify it in a \"network\" xml element under the "
+      raise Exception("no networks found if there is one available that"
+        +" wasn't detected specify it in a \"network\" xml element under the "
         +"\"instance-create\" element.")
     
     networkName=networkNames[0]
@@ -286,8 +351,24 @@ def createInstance(parameters,clients):
   #TODO: add ability to specify key-pair
   #print(clients["nova"].servers.create.__doc__)
   
+  #check to see if a key pair was specified
+  keyName=None
+  if "key" in parameters.keys():
+    keyName=parameters["key-name"]
+  
+  alreadyExists="fail"
+  if "already-exists" in parameters.keys():
+    alreadyExists=parameters["already-exists"]
+  
+  #global over-ride
+  if options.alreadyExistsGlobal!=None:
+    alreadyExists=options.alreadyExistsGlobal
+  
   #boot from a volume
   if "volume" in parameters["instance-boot-source"].keys():
+    
+    #TODO: much of the below code is general to creating an instance in any
+    # way should pull this code out when I add other methods for creating VMs
     
     #check to see if we already have an instance with that name
     try:
@@ -295,10 +376,23 @@ def createInstance(parameters,clients):
     except novaclient.exceptions.NotFound:
       pass #name not used, this is good
     else:
-      raise Exception("already an instance present with name \""+hostname+"\"")
+      if alreadyExists=="skip":
+        sys.stdout.write("\n  An instance with the name \""
+          +hostname
+          +"\" already exists, skipping creation.\n")
+        sys.stdout.flush()
+        return
+      elif alreadyExists=="overwrite":
+        sys.stdout.write("  An instance with the name \""+hostname
+          +"\" already exists, overwriting.\n")
+        sys.stdout.flush()
+        terminateInstance({"instance":hostname},clients)
+      else:
+        raise Exception("already an instance present with name \""
+          +hostname+"\".")
     
     #get volume id
-    volumes=clients["nova"].volumes.list()
+    volumes=clients["cinder"].volumes.list()
     volumeFound=False
     for volume in volumes:
       
@@ -315,7 +409,8 @@ def createInstance(parameters,clients):
     
     #Create the instance
     blockDeviceMapping={'vda':volumeID}
-    sys.stdout.write("\n    Booting from a volume ")
+    currentMessage="    Booting from a volume "
+    sys.stdout.write("\n")
     sys.stdout.flush()
     instance=clients["nova"].servers.create(
       name=hostname
@@ -323,6 +418,7 @@ def createInstance(parameters,clients):
       ,flavor=flavor
       ,image=None
       ,nics=nics
+      ,key_name=keyName
       )
   else:
     #TODO: implement other methods for creating a VM
@@ -343,7 +439,8 @@ def createInstance(parameters,clients):
       pass#keep waiting for instance to show up
     
     if instanceNotActive:
-      sys.stdout.write(".")
+      sys.stdout.write(currentMessage+" {0}\r".format(
+        waitAnimation[iter%len(waitAnimation)]))
       sys.stdout.flush()
       #wait some amount of time before checking again
       time.sleep(OSCheckWaitTime)
@@ -360,6 +457,7 @@ def attachVolume(parameters,clients):
   """
   
   ensureNovaClient(clients)
+  ensureCinderClient(clients)
   
   #get instance
   servers=clients["nova"].servers.list()
@@ -375,7 +473,7 @@ def attachVolume(parameters,clients):
       +parameters["instance"]+"\" found")
   
   #get volume
-  volumes=clients["nova"].volumes.list()
+  volumes=clients["cinder"].volumes.list()
   volumeToAttach=None
   for volume in volumes:
     if volume.name==parameters["volume"] or volume.id==parameters["volume"]:
@@ -399,15 +497,17 @@ def attachVolume(parameters,clients):
       raise Exception("the volume \""+volumeToAttach.name
         +"\" is already attached to \""+instanceAttached.name
         +"\" on device \""+volumeToAttach.attachments[0]["device"])
-        
-  sys.stdout.write("  Attaching \""+parameters["volume"]+"\" to instance \""+parameters["instance"]+"\" ")
-  sys.stdout.flush()
+  
+  currentMessage="  Attaching \""+parameters["volume"]+"\" to instance \""\
+    +parameters["instance"]+"\""
   
   #attach volume to instance
   if "device" in parameters.keys():
-    clients["nova"].volumes.create_server_volume(serverToAttachTo.id,volumeToAttach.id,parameters["device"])
+    clients["nova"].volumes.create_server_volume(serverToAttachTo.id
+      ,volumeToAttach.id,parameters["device"])
   else:
-    clients["nova"].volumes.create_server_volume(serverToAttachTo.id,volumeToAttach.id)
+    clients["nova"].volumes.create_server_volume(serverToAttachTo.id
+      ,volumeToAttach.id)
   
   #wait until action is completed
   volumeNotAttached=True
@@ -415,20 +515,26 @@ def attachVolume(parameters,clients):
   while volumeNotAttached and iter<OSNumChecks:
     
     #is the instance still there?
-    volumeCheck=clients["nova"].volumes.find(id=volumeToAttach.id)
-    
-    for attachment in volumeCheck.attachments:
-      instanceAttached=clients["nova"].servers.find(
-      id=attachment["server_id"])
-      if instanceAttached==serverToAttachTo:
-        volumeNotAttached=False
+    volumeCheck=None
+    volumes=clients["cinder"].volumes.list()
+    for volume in volumes:
+      if volume.id==volumeToAttach.id:
+        volumeCheck=volume
         break
-      else:
-        sys.stdout.write(".")
-        sys.stdout.flush()
-        #wait some amount of time before checking again
-        time.sleep(OSCheckWaitTime)
-        iter+=1
+    if volumeCheck!=None:
+      for attachment in volumeCheck.attachments:
+        instanceAttached=clients["nova"].servers.find(
+        id=attachment["server_id"])
+        if instanceAttached==serverToAttachTo:
+          volumeNotAttached=False
+          break
+          
+    #wait some amount of time before checking again
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
+    sys.stdout.flush()
+    time.sleep(OSCheckWaitTime)
+    iter+=1
       
   #check that we haven't timed out
   if iter>=OSNumChecks and volumeNotAttached:
@@ -496,9 +602,8 @@ def associateFloatingIP(parameters,clients):
     ipToAttach=clients["nova"].floating_ips.create(ipPoolToUse.name)
     
   #at this point should have an ip to attach to an instance
-  sys.stdout.write("  associating floating ip \""+str(ipToAttach.ip)+"\" with \""
-    +parameters["instance"]+"\" ")
-  sys.stdout.flush()
+  currentMessage="  associating floating ip \""+str(ipToAttach.ip)+"\" with \""\
+    +parameters["instance"]+"\""
   
   #check that specified instance exists
   servers=clients["nova"].servers.list()
@@ -537,16 +642,18 @@ def associateFloatingIP(parameters,clients):
   iter=0
   while notAttached and iter<OSNumChecks:
     
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
+    sys.stdout.flush()
+    
     ipCheck=clients["nova"].floating_ips.find(id=ipToAttach.id)
-    if ipCheck.instance_id==None:
-      sys.stdout.write(".")
-      sys.stdout.flush()
-      #wait some amount of time before checking again
-      time.sleep(OSCheckWaitTime)
-      iter+=1
-    else:
+    if ipCheck.instance_id==instanceToAttachTo.id:
       notAttached=False
       break
+      
+    #wait some amount of time before checking again
+    time.sleep(OSCheckWaitTime)
+    iter+=1
   
   if notAttached and iter>=OSNumChecks:
     raise Exception("Timed out while waiting for floating ip to associate"
@@ -578,8 +685,7 @@ def deleteImage(parameters,clients):
     sys.stdout.write(message)
     return
   
-  sys.stdout.write("  Deleting image \""+parameters["image"]+"\" ")
-  sys.stdout.flush()
+  currentMessage="  Deleting image \""+parameters["image"]+"\""
   
   #delete the image
   imageID=imageToDelete.id
@@ -599,7 +705,8 @@ def deleteImage(parameters,clients):
         break
     
     #wait some amount of time before checking again
-    sys.stdout.write(".")
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
     sys.stdout.flush()
     time.sleep(OSCheckWaitTime)
     iter+=1
@@ -619,18 +726,36 @@ def uploadImage(parameters,clients):
   #check that an image with the given name doesn't already exist
   projectID=getProjectID(clients)
   images=clients["glance"].images.list(owner=projectID)
-  imageAlreadyExists=False
+  
+  alreadyExists="fail"
+  if "already-exists" in parameters.keys():
+    alreadyExists=parameters["already-exists"]
+  
+  #global over-ride
+  if options.alreadyExistsGlobal!=None:
+    alreadyExists=options.alreadyExistsGlobal
+  
   for image in images:
     if(image.name==parameters["image-name"]):
-      imageAlreadyExists=True
-      break
-  if imageAlreadyExists:
-    raise Exception("an image with the name \""+parameters["image-name"]
-      +" already exists!")
+      
+      if alreadyExists=="skip":
+        sys.stdout.write("  An image with the name \""
+          +parameters["image-name"]
+          +"\" already exists, skipping upload.\n")
+        sys.stdout.flush()
+        return
+      elif alreadyExists=="overwrite":
+        sys.stdout.write("  An image with the name \""
+          +str(parameters["image-name"])
+          +"\" already exists, overwriting.\n")
+        sys.stdout.flush()
+        deleteImage({"image":image.id},clients)
+      else:
+        raise Exception("an image with the name \""+parameters["image-name"]
+          +" already exists!")
   
-  sys.stdout.write("  Uploading image file \""+parameters["file-name"]
-    +"\" to image \""+parameters["image-name"]+"\" ")
-  sys.stdout.flush()
+  currentMessage="  Uploading image file \""+parameters["file-name"]\
+    +"\" to image \""+parameters["image-name"]+"\" "
   
   #guess format from file extension
   diskFormat=None
@@ -651,9 +776,29 @@ def uploadImage(parameters,clients):
   #create an image
   image=clients["glance"].images.create(name=parameters["image-name"])
   imageID=image.id
-  image.update(data=open(parameters["file-name"],'rb'),disk_format=diskFormat
-    ,container_format=formats.containerFormat)
-
+  
+  #start uploading data in a separate thread
+  updateImageThread=threading.Thread(target=image.update,kwargs={
+    "data":open(parameters["file-name"],'rb')
+    ,"disk_format":diskFormat
+    ,"container_format":formats.containerFormat})
+  #image.update(data=open(parameters["file-name"],'rb'),disk_format=diskFormat
+  #  ,container_format=formats.containerFormat)
+  updateImageThread.start()
+  
+  #wait for thread to stop, letting user know it is still working
+  threadRunning=True
+  iter=0
+  while threadRunning:
+    if not updateImageThread.isAlive():
+      threadRunning=False
+    
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
+    sys.stdout.flush()
+    time.sleep(OSCheckWaitTime)
+    iter+=1
+    
   #wait for image to be active
   imageNotActive=True
   iter=0
@@ -667,13 +812,15 @@ def uploadImage(parameters,clients):
           imageNotActive=False
           break
     #wait some amount of time before checking again
-    sys.stdout.write(".")
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
     sys.stdout.flush()
     time.sleep(OSCheckWaitTime)
     iter+=1
   
   #check that we haven't timed out
   if iter>=OSNumChecks and imageNotActive:
+    updateImageThread
     raise Exception("Timed out waiting for image to upload.\n")
   
   #notify that termination has completed
@@ -685,7 +832,7 @@ def deleteVolume(parameters,clients):
   
   ensureCinderClient(clients)
   
-  #get the volume to image
+  #get the volume to delete
   volumeToDelete=None
   projectID=getProjectID(clients)
   volumes=clients["cinder"].volumes.list()
@@ -695,12 +842,17 @@ def deleteVolume(parameters,clients):
       break
   
   if volumeToDelete==None:
-    raise Exception("volume with name or id \""+parameters["volume"]+"\" not found!")
+    raise Exception("volume with name or id \""
+      +parameters["volume"]+"\" not found!")
   
-  sys.stdout.write("  Deleting volume \""+parameters["volume"]+"\" ")
-  sys.stdout.flush()
+  currentMessage="  Deleting volume \""+parameters["volume"]+"\""
   
   volumeID=volumeToDelete.id
+  #check to see if the volume is attached to a vm
+  if volumeToDelete.status=="in-use":
+    raise Exception("volume with id \""+volumeID
+      +"\" still in use, not able to delete.")
+  
   volumeToDelete.delete()
   
   #check that the deletion has completed
@@ -716,7 +868,8 @@ def deleteVolume(parameters,clients):
         break
     
     #wait some amount of time before checking again
-    sys.stdout.write(".")
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
     sys.stdout.flush()
     time.sleep(OSCheckWaitTime)
     iter+=1
@@ -746,14 +899,43 @@ def createVolumeFromImage(parameters,clients):
       imageToUse=image
       break
   
-  #if image not found warn that nothing is being done
+  #if image not found we have a problem
   if imageToUse==None:
     raise Exception("no image owned by the current user with name or id \""\
       +parameters["image"]+"\" was found.\n")
   
-  sys.stdout.write("  Creating volume \""+parameters["volume-name"]
-    +"\" from image \""+parameters["image"]+"\" ")
-  sys.stdout.flush()
+  alreadyExists="fail"
+  if "already-exists" in parameters.keys():
+    alreadyExists=parameters["already-exists"]
+  
+  #global over-ride
+  if options.alreadyExistsGlobal!=None:
+    alreadyExists=options.alreadyExistsGlobal
+  
+  #check if there is a volume with that name already
+  volumes=clients["cinder"].volumes.list()
+  
+  for volume in volumes:
+    if volume.name==parameters["volume-name"]:
+    
+      if alreadyExists=="skip":
+        sys.stdout.write("  A volume with the name \""
+          +parameters["volume-name"]
+          +"\" already exists, skipping creation.\n")
+        sys.stdout.flush()
+        return
+      elif alreadyExists=="overwrite":
+        sys.stdout.write("  A volume with the name \""
+          +str(parameters["volume-name"])
+          +"\" already exists, overwriting.\n")
+        sys.stdout.flush()
+        deleteVolume({"volume":volume.id},clients)
+      else:
+        raise Exception("a volume with the name \""
+          +str(parameters["volume-name"])+"\" already exists.")
+  
+  currentMessage="  Creating volume \""+parameters["volume-name"]\
+    +"\" from image \""+parameters["image"]+"\""
   
   #create the volume
   volume=clients["cinder"].volumes.create(size=parameters["size"]
@@ -775,7 +957,8 @@ def createVolumeFromImage(parameters,clients):
         break
     
     #wait some amount of time before checking again
-    sys.stdout.write(".")
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
     sys.stdout.flush()
     time.sleep(OSCheckWaitTime)
     iter+=1
@@ -790,9 +973,10 @@ def createVolumeFromImage(parameters,clients):
 #When creating new action executor functions, add them to this dictionary
 #the key will be the XML tag under the <parameters> tag (see actions.xsd 
 #scheme for expected xml format).
-#One must also add to the parameter-type.xsd to describe the parameters required
-#for that action and add that as a choice under the "parameters-type" XML element
-#type. See existing parameter-type.xsd xml type entries, e.g. instance-create.
+#One must also add to the parameter-type.xsd to describe the parameters 
+#required for that action and add that as a choice under the "parameters-type"
+#XML element type. See existing parameter-type.xsd xml type entries, e.g. 
+#instance-create.
 exeFuncs={
   "terminate-instance":terminateInstance
   ,"create-image-from-volume":createImageFromVolume
