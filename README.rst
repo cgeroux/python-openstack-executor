@@ -57,7 +57,7 @@ Setting up your environment
 On ACENET machines you need to load the module for the version of python you 
 wish to use with
 
-```shell
+```
 $ module purge
 $ module load gcc pythonX.Y
 ```
@@ -68,7 +68,7 @@ administrative privileges, the paths for locally installed libraries and
 binaries will need to be added to the environment variables, PYTHONPATH and 
 PATH respectively. The commands:
 
-```shell
+```
 $ export PATH=${HOME}/.local/bin:${PATH}
 $ export PYTHONPATH=${HOME}/.local/lib/pythonX.Y/site-packages:${PYTHONPATH}
 ```
@@ -85,7 +85,7 @@ Installing lxml
 
 To install to your home directory with pip:
 
-```shell
+```
 $ pip install --user lxml
 ```
 
@@ -94,7 +94,7 @@ Getting OpenStack python clients
 
 As with lxml the command is:
 
-```shell
+```
 $ pip install --user python-openstackclient==2.6.0
 ```
 
@@ -103,7 +103,7 @@ Installation openstack-executor
 
 From inside the python-openstack-executor directory run:
 
-```shell
+```
 $ python setup.py install --user
 ```
 
@@ -116,7 +116,7 @@ Usage
 
 To run the program use the command:
 
-```shell
+```
 $openstack-executor ACTIONS.XML
 ```
 
@@ -158,7 +158,7 @@ If you developing openstack-executor these might be helpful notes.
 + Running a non-installed version from the root package directory 
   "python-openstack-executor"
 
-```shell
+```
 $ python -m openstack_executor ACTIONS.xml
 ```
 
@@ -166,13 +166,13 @@ $ python -m openstack_executor ACTIONS.xml
 
 +  The script openstack-executor-runner.py can also be used to run the code as:
 
-```shell
+```
 $ ./openstack-executor-runner.py ACTIONS.xml
 ```
 
 + To run a single test script (will show stdout):
 
-```shell
+```
 $ python openstack_executor/tests/<test_script>.py
 ```
 
@@ -181,7 +181,7 @@ $ python openstack_executor/tests/<test_script>.py
   
 + To run all tests showing only results (will not show stdout):
 
-```shell
+```
 $ python setup.py test
 ```
   
