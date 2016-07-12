@@ -28,9 +28,9 @@ Requirements
 ============
 
 + Python2.6+
-    
-    Already available on ACENET machines and most current Linux 
-    distributions. Tested specifically with Python3.4.1 and Python2.7.10
+
+Already available on ACENET machines and most current Linux 
+distributions. Tested specifically with Python3.4.1 and Python2.7.10
 
 + pip
     
@@ -61,18 +61,22 @@ Setting up your environment
 On ACENET machines you need to load the module for the version of python you 
 wish to use with
 
-  $ module purge
-  $ module load gcc pythonX.Y
-  
+```shell
+$ module purge
+$ module load gcc pythonX.Y
+```
+
 Which set environment variables to use version X.Y of python. If installing 
 packages locally, which is what most users will do as they don't have 
 administrative privileges, the paths for locally installed libraries and 
 binaries will need to be added to the environment variables, PYTHONPATH and 
 PATH respectively. The commands:
 
-  $ export PATH=${HOME}/.local/bin:${PATH}
-  $ export PYTHONPATH=${HOME}/.local/lib/pythonX.Y/site-packages:${PYTHONPATH}
-  
+```shell
+$ export PATH=${HOME}/.local/bin:${PATH}
+$ export PYTHONPATH=${HOME}/.local/lib/pythonX.Y/site-packages:${PYTHONPATH}
+```
+
 will do this if using the bash shell. These lines can be added to your 
 ".bashrc" file in your home directory to have these commands executed each 
 time you log into the machine.
@@ -85,22 +89,27 @@ Installing lxml
 
 To install to your home directory with pip:
 
-  $ pip install --user lxml
-  
+```shell
+$ pip install --user lxml
+```
 
 Getting OpenStack python clients
 --------------------------------
 
 As with lxml the command is:
 
-  $ pip install --user python-openstackclient==2.6.0
+```shell
+$ pip install --user python-openstackclient==2.6.0
+```
 
 Installation openstack-executor
 ===============================
 
 From inside the python-openstack-executor directory run:
 
-  $ python setup.py install --user
+```shell
+$ python setup.py install --user
+```
 
 to install to your home directory. The --record <filename> option will output 
 a list of files created during install.
@@ -110,9 +119,11 @@ Usage
 =====
 
 To run the program use the command:
-  
-  $openstack-executor ACTIONS.XML
-  
+
+```shell
+$openstack-executor ACTIONS.XML
+```
+
 where the ACTIONS.xml file describes the actions you wish to perform. A "-h" 
 or "--help" option can be specified to also describe usage and available 
 options. The "examples_action_xml_files" directory contains a number of 
@@ -151,24 +162,32 @@ If you developing openstack-executor these might be helpful notes.
 + Running a non-installed version from the root package directory 
   "python-openstack-executor"
 
-  $ python -m openstack_executor ACTIONS.xml
-  
+```shell
+$ python -m openstack_executor ACTIONS.xml
+```
+
   will execute the directory openstack_executor.
 
 +  The script openstack-executor-runner.py can also be used to run the code as:
-  
-  $ ./openstack-executor-runner.py ACTIONS.xml
-  
+
+```shell
+$ ./openstack-executor-runner.py ACTIONS.xml
+```
+
 + To run a single test script (will show stdout):
 
-  $ python openstack_executor/tests/<test_script>.py
-  
+```shell
+$ python openstack_executor/tests/<test_script>.py
+```
+
   This however, will import modules from the installation location so for changes 
   in your tested code to take effect they must be "installed" first.
   
 + To run all tests showing only results (will not show stdout):
 
-  $ python setup.py test
+```shell
+$ python setup.py test
+```
   
   
 Integration Testing
