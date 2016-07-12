@@ -196,12 +196,11 @@ Integration Testing
 + run the example xml files in openstack_executor/example_action_xml_files
 
 + this requires that at the very least
-+ + a bootable volume named "root"
-+ + an attachable volume named "data"
-+ + the ip address 206.12.96.177 available to associate with a VM
-+ + the flavor "c4-15gb-205" 
-
+    * a bootable volume named "root"
+    * an attachable volume named "data"
+    * the ip address 206.12.96.177 available to associate with a VM
+    * the flavor "c4-15gb-205" 
 + the expected order is 
-+ + backup_server.xml
-+ + delete_server_volumes_and_images.xml
-+ + restore_from_backup.xml
+    * backup_server.xml
+    * delete_server_volumes_and_images.xml
+    * restore_from_backup.xml
