@@ -28,27 +28,31 @@ Requirements
 ============
 
 + Python2.6+
-Already available on ACENET machines and most current Linux 
-distributions. Tested specifically with Python3.4.1 and Python2.7.10
+
+  Already available on ACENET machines and most current Linux 
+  distributions. Tested specifically with Python3.4.1 and Python2.7.10
 
 + pip
-Already available on ACENET machines, if not on an ACENET machine 
-search within your Linux distribution package manager for pip (e.g. 
-"apt-cache search pip" and installed with "apt-get install 
-<pip-package-name>" in Ubuntu)
+
+  Already available on ACENET machines, if not on an ACENET machine 
+  search within your Linux distribution package manager for pip (e.g. 
+  "apt-cache search pip" and installed with "apt-get install 
+  <pip-package-name>" in Ubuntu)
   
 + lxml
   
 + OpenStack python clients
-These clients change rapidly, so it is likely important to use the same
-version this code was developed and tested with. Currently that is 2.6.0.
-See below installation instructions on how to get the correct version.
+
+  These clients change rapidly, so it is likely important to use the same
+  version this code was developed and tested with. Currently that is 2.6.0.
+  See below installation instructions on how to get the correct version.
 
 + An OpenStack rc file
-Downloaded from your OpenStack dashboard under Project->Compute->
-Access & Security->API Access->Download OpenStack RC File
-or on east cloud this is now "Download OpenStack RC File v3" the
-"Download OpenStack RC File v2" option will not work for most users.
+
+  Downloaded from your OpenStack dashboard under Project->Compute->
+  Access & Security->API Access->Download OpenStack RC File
+  or on east cloud this is now "Download OpenStack RC File v3" the
+  "Download OpenStack RC File v2" option will not work for most users.
 
 
 Setting up your environment
@@ -57,9 +61,9 @@ Setting up your environment
 On ACENET machines you need to load the module for the version of python you 
 wish to use with
 
-```
-$ module purge
-$ module load gcc pythonX.Y
+```shell
+module purge
+module load gcc pythonX.Y
 ```
 
 Which set environment variables to use version X.Y of python. If installing 
