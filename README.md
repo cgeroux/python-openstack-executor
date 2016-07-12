@@ -61,9 +61,9 @@ Setting up your environment
 On ACENET machines you need to load the module for the version of python you 
 wish to use with
 
-```shell
-module purge
-module load gcc pythonX.Y
+```
+$ module purge
+$ module load gcc pythonX.Y
 ```
 
 Which set environment variables to use version X.Y of python. If installing 
@@ -72,7 +72,7 @@ administrative privileges, the paths for locally installed libraries and
 binaries will need to be added to the environment variables, PYTHONPATH and 
 PATH respectively. The commands:
 
-```shell
+```
 $ export PATH=${HOME}/.local/bin:${PATH}
 $ export PYTHONPATH=${HOME}/.local/lib/pythonX.Y/site-packages:${PYTHONPATH}
 ```
@@ -121,7 +121,7 @@ Usage
 To run the program use the command:
 
 ```
-$openstack-executor ACTIONS.XML
+$ openstack-executor ACTIONS.XML
 ```
 
 where the ACTIONS.xml file describes the actions you wish to perform. A "-h" 
@@ -161,33 +161,33 @@ If you developing openstack-executor these might be helpful notes.
 
 + Running a non-installed version from the root package directory 
   "python-openstack-executor"
-
+  
   ```
   $ python -m openstack_executor ACTIONS.xml
   ```
-
+  
   will execute the directory openstack_executor.
+  
++ The script openstack-executor-runner.py can also be used to run the code as:
 
-+  The script openstack-executor-runner.py can also be used to run the code as:
-
-```
-$ ./openstack-executor-runner.py ACTIONS.xml
-```
+  ```
+  $ ./openstack-executor-runner.py ACTIONS.xml
+  ```
 
 + To run a single test script (will show stdout):
-
-```
-$ python openstack_executor/tests/<test_script>.py
-```
-
+  
+  ```
+  $ python openstack_executor/tests/<test_script>.py
+  ```
+  
   This however, will import modules from the installation location so for changes 
   in your tested code to take effect they must be "installed" first.
   
 + To run all tests showing only results (will not show stdout):
-
-```
-$ python setup.py test
-```
+  
+  ```
+  $ python setup.py test
+  ```
   
   
 Integration Testing
