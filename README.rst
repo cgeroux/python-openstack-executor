@@ -28,12 +28,12 @@ Requirements
 ============
 
 + Python2.6+
-
+  
   Already available on ACENET machines and most current Linux 
   distributions. Tested specifically with Python3.4.1 and Python2.7.10
 
 + pip
-
+  
   Already available on ACENET machines, if not on an ACENET machine 
   search within your Linux distribution package manager for pip (e.g. 
   "apt-cache search pip" and installed with "apt-get install 
@@ -42,13 +42,13 @@ Requirements
 + lxml
   
 + OpenStack python clients
-
+  
   These clients change rapidly, so it is likely important to use the same
   version this code was developed and tested with. Currently that is 2.6.0.
   See below installation instructions on how to get the correct version.
 
 + An OpenStack rc file
-
+  
   Downloaded from your OpenStack dashboard under Project->Compute->
   Access & Security->API Access->Download OpenStack RC File
   or on east cloud this is now "Download OpenStack RC File v3" the
@@ -162,9 +162,9 @@ If you developing openstack-executor these might be helpful notes.
 + Running a non-installed version from the root package directory 
   "python-openstack-executor"
 
-```
-$ python -m openstack_executor ACTIONS.xml
-```
+  ```
+  $ python -m openstack_executor ACTIONS.xml
+  ```
 
   will execute the directory openstack_executor.
 
