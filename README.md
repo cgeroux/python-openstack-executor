@@ -72,7 +72,7 @@ administrative privileges, the paths for locally installed libraries and
 binaries will need to be added to the environment variables, PYTHONPATH and 
 PATH respectively. The commands:
 
-```
+```shell
 $ export PATH=${HOME}/.local/bin:${PATH}
 $ export PYTHONPATH=${HOME}/.local/lib/pythonX.Y/site-packages:${PYTHONPATH}
 ```
