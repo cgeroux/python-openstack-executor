@@ -40,7 +40,7 @@ def terminateInstance(parameters,clients):
   
   #if no server found
   if serverToTerminate==None:
-    sys.stdout.write("\n    WARNING: No instance found with name or id \""
+    sys.stdout.write("    WARNING: No instance found with name or id \""
       +parameters["instance"]+"\". Nothing to terminate!\n")
     return
   
