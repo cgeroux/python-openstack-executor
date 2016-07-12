@@ -27,9 +27,7 @@ specific Linux environment.
 Requirements
 ============
 
-+ Python2.6+
-
-Already available on ACENET machines and most current Linux 
++ Python2.6+: Already available on ACENET machines and most current Linux 
 distributions. Tested specifically with Python3.4.1 and Python2.7.10
 
 + pip
