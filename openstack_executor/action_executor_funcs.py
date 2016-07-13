@@ -259,7 +259,7 @@ def downloadImage(parameters,clients):
       raise Exception("file with name \""+fileName+"\" already exists!")
       
   #download the image
-  imageFile=open(fileName,'bw+')
+  imageFile=open(fileName,'wb+')
   chunks=imageToDownLoad.data()
   imageSize=chunks.length
   downloaded=0
