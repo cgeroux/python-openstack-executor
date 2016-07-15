@@ -157,7 +157,7 @@ installed version this is in
 Development/Debugging Notes
 ===========================
 
-If you developing openstack-executor these might be helpful notes.
+If you are developing openstack-executor these might be helpful notes.
 
 + Running a non-installed version from the root package directory 
   "python-openstack-executor"
