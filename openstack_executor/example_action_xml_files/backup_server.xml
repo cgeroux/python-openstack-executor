@@ -22,7 +22,11 @@
         <image-name>data-image</image-name><!--name of the newly create image. 
           There can not already be an image with this name-->
         <format>vdi</format><!--Acceptable values are "raw", "qcow2", "vdi"
-          , and "vmdk". The "raw" format seems to take up the most space.-->
+          , and "vmdk". The "raw" format seems to take up the most space, 
+          however doesn't require a format conversion when creating a volume 
+          from a raw image, so it can make the volume creation process faster. 
+          Ephemeral storage supports the qcow2 format and doesn't require a 
+          conversion.-->
         <already-exists>overwrite</already-exists><!-- dictates the behaviour 
           when an image with the given name already exists. Possible options are 
             skip: skip performing the action assuming it is already completed 
