@@ -36,7 +36,7 @@ Requirements
   
   Already available on ACENET machines, if not on an ACENET machine 
   search within your Linux distribution package manager for pip (e.g. 
-  "apt-cache search pip" and installed with "apt-get install 
+  "apt-cache search pip" and install with "apt-get install 
   <pip-package-name>" in Ubuntu)
   
 + lxml
