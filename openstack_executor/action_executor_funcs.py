@@ -1006,7 +1006,7 @@ def addSecurityGroup(parameters,clients):
   
   #we are finished, happens really quickly, not going to bother checking 
   #security group added
-  sys.stdout.write("\n    Security Group Added.\n")
+  sys.stdout.write("    Security Group Added.\n")
 #When creating new action executor functions, add them to this dictionary
 #the key will be the XML tag under the <parameters> tag (see actions.xsd 
 #scheme for expected xml format).
