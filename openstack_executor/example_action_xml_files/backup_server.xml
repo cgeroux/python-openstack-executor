@@ -140,4 +140,14 @@
     </parameters>
   </action>
   
+  <action>
+    <id>add-security-group</id>
+    <parameters>
+      <add-security-group>
+        <security-group>mediawiki_security</security-group><!-- name or id of a pre-existing security group to add-->
+        <instance>mediawiki-server</instance><!-- name or id of instance to add security group too -->
+      </add-security-group>
+    </parameters>
+  </action>
+  
 </actions>
