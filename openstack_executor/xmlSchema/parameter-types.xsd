@@ -20,6 +20,7 @@
       <xs:element name="upload-image" type="pt:upload-image-type" />
       <xs:element name="delete-volume" type="pt:delete-volume-type" />
       <xs:element name="create-volume-from-image" type="pt:create-volume-from-image-type" />
+      <xs:element name="add-security-group" type="pt:add-security-group-type" />
     </xs:choice>
   </xs:complexType>
   
@@ -108,6 +109,12 @@
     </xs:all>
   </xs:complexType>
   
+  <xs:complexType name="add-security-group-type">
+    <xs:all>
+      <xs:element name="security-group" type="cm:non-empty-str"/>
+      <xs:element name="instance" type="cm:non-empty-str"/>
+    </xs:all>
+  </xs:complexType>
   
   <!--Supporting types-->
   

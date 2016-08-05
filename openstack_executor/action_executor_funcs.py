@@ -621,7 +621,7 @@ def associateFloatingIP(parameters,clients):
   #at this point should have an instance to attach the ip to
   
   #check to see if ip already assigned to an instance
-  if ipToAttach.instance_id!=None:
+  if ipToAttach.instance_id!=None and ipToAttach.instance_id!='':
     server=clients["nova"].servers.find(id=ipToAttach.instance_id)
     
     #is it the instance we want to attach to?
@@ -970,6 +970,39 @@ def createVolumeFromImage(parameters,clients):
   #notify that creation has completed
   sys.stdout.write("\n    Creation completed.\n")
   return
+def addSecurityGroup(parameters,clients):
+  """
+  """
+  
+  ensureNovaClient(clients)
+  
+  #get the requested security group
+  securityGroupToAdd=None
+  securityGroups=clients["nova"].security_groups.list()
+  for securityGroup in securityGroups:
+    if (securityGroup.name==parameters["security-group"]
+      or securityGroup.id==parameters["security-group"]):
+        securityGroupToAdd=securityGroup
+        break
+  
+  if securityGroupToAdd==None:
+    raise Exception("given security group \""+parameters["security-group"]+"\" not found.")
+  
+  #get requested instance
+  servers=clients["nova"].servers.list()
+  instanceToAttachTo=None
+  for server in servers:
+    if (server.name==parameters["instance"] 
+      or server.id==parameters["instance"]):
+      instanceToAttachTo=server
+      break
+  
+  #if we don't have the instance report the problem
+  if instanceToAttachTo==None:
+    raise Exception("given instance \""+parameters["instance"]+"\" not found.")
+  
+  #add security group
+  instanceToAttachTo.add_security_group(securityGroupToAdd.name)
 #When creating new action executor functions, add them to this dictionary
 #the key will be the XML tag under the <parameters> tag (see actions.xsd 
 #scheme for expected xml format).
@@ -988,4 +1021,5 @@ exeFuncs={
   ,"upload-image":uploadImage
   ,"delete-volume":deleteVolume
   ,"create-volume-from-image":createVolumeFromImage
+  ,"add-security-group":addSecurityGroup
   }
