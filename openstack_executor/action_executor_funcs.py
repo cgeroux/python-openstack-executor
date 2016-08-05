@@ -842,8 +842,8 @@ def deleteVolume(parameters,clients):
       break
   
   if volumeToDelete==None:
-    raise Exception("volume with name or id \""
-      +parameters["volume"]+"\" not found!")
+    sys.stdout.write("    WARNING: no volume with name or id \""+parameters["volume"]+"\".\n")
+    return
   
   currentMessage="  Deleting volume \""+parameters["volume"]+"\""
   
