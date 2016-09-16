@@ -17,10 +17,10 @@ def addParserOptions(parser):
   """Adds command line options
   """
   
-  group=op.OptionGroup(parser,title="",description="These options force a "
+  group=op.OptionGroup(parser,title="Already Exists Behaviour",description="These options force a "
     +"global behaviour when ever an existing resource with the same name of "
     +"the one being created is encountered. For finner grained control use "
-    +"the <already-exists> element in an action's specific parameters "
+    +"the <already-exists> element in an specific action's parameters "
     +"element, (e.g. <create-instance>, <download-image> etc.).")
   
   group.add_option("--overwrite-all",action="store_const"
@@ -43,8 +43,13 @@ def parseOptions():
   """
   
   parser=op.OptionParser(usage="Usage: %prog [options] SETTINGS.xml"
-    ,version="%prog 1.0",description="Creates a backup image of the "
-    +"specified OpenStack VM and downloads it to your local machine")
+    ,version="%prog 1.0",description="Performs actions specified in the "
+    +"SETTINGS.xml file. These actions could be create a VM, attach "
+    +"volumes, associate Floating IP, terminate VM, create an image "
+    +"from volume, etc. See example SETTINGS.xml likely located in a "
+    +"directory like \"${HOME}/.local/lib/pythonX.Y/site-packages/"
+    +"openstack_executor-1.0.0-py3.4.egg/openstack_executor/"
+    +"example_action_xml_files\"")
   
   #add options
   addParserOptions(parser)

@@ -11,8 +11,8 @@ OSCheckWaitTime=1#time to wait between polling OS to check for action
   #completion in seconds
 OSNumChecks=60#number of times to check for action completion
 
-#assume rate of creation, this is based on a 10Gb
-#volume with 805Mb of data taking 57s to create an image from
+#assume rate of creation, this is based on a 10GB
+#volume with 805MB of data taking 57s to create an image from
 gbPers=0.01
 waitAnimation="|\\-/"
 if authVersion=="2":
