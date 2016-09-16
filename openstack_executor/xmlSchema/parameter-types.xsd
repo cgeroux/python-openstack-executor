@@ -12,14 +12,13 @@
     <xs:choice>
       <xs:element name="create-instance" type="pt:create-instance-type"/>
       <xs:element name="terminate-instance" type="pt:terminate-instance-type"/>
-      <xs:element name="create-image-from-volume" type="pt:create-image-from-volume-type"/>
       <xs:element name="download-image" type="pt:download-image-type"/>
       <xs:element name="attach-volume" type="pt:attach-volume-type" />
       <xs:element name="associate-floating-ip" type="pt:associate-floating-ip-type" />
       <xs:element name="delete-image" type="pt:delete-image-type" />
       <xs:element name="upload-image" type="pt:upload-image-type" />
       <xs:element name="delete-volume" type="pt:delete-volume-type" />
-      <xs:element name="create-volume-from-image" type="pt:create-volume-from-image-type" />
+      <xs:element name="create-volume" type="pt:create-volume" />
       <xs:element name="add-security-group" type="pt:add-security-group-type" />
     </xs:choice>
   </xs:complexType>
@@ -100,10 +99,10 @@
     </xs:all>
   </xs:complexType>
   
-  <xs:complexType name="create-volume-from-image-type">
+  <xs:complexType name="create-volume">
     <xs:all>
       <xs:element name="volume-name" type="cm:non-empty-str"/>
-      <xs:element name="image" type="cm:non-empty-str"/><!--name or id-->
+      <xs:element name="image" type="cm:non-empty-str" minOccurs="0"/><!--name or id-->
       <xs:element name="size" type="xs:int"/><!--in GB-->
       <xs:element name="already-exists" type="pt:already-exists-type" minOccurs="0"/>
     </xs:all>

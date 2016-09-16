@@ -12,8 +12,6 @@ from keystoneauth1.identity import v3
 from keystoneauth1 import session
 from keystoneclient import client
 
-from .imageFormats import *
-
 def ensureNovaClient(clients):
   #make sure there is a nova client
   if "nova" not in clients.keys():

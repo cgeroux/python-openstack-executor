@@ -9,7 +9,7 @@ from . import formats
 
 OSCheckWaitTime=1#time to wait between polling OS to check for action 
   #completion in seconds
-OSNumChecks=60#number of times to check for action completion
+OSNumChecks=120#number of times to check for action completion
 
 #assume rate of creation, this is based on a 10GB
 #volume with 805MB of data taking 57s to create an image from
@@ -521,7 +521,8 @@ def attachVolume(parameters,clients):
       if volume.id==volumeToAttach.id:
         volumeCheck=volume
         break
-    if volumeCheck!=None:
+    
+    if volumeCheck is not None:
       for attachment in volumeCheck.attachments:
         instanceAttached=clients["nova"].servers.find(
         id=attachment["server_id"])
@@ -876,34 +877,44 @@ def deleteVolume(parameters,clients):
   
   #check that we haven't timed out
   if iter>=OSNumChecks and volumeExists:
-    raise Exception("Timed out waiting for volume deletion to complete.\n")
+    raise Exception("Timed out after waiting more than "
+      +OSCheckWaitTime*OSNumChecks+" s for volume deletion to complete. "
+      +"You may wish to check your OS dashboard for problems.\n")
   
   #notify that termination has completed
   sys.stdout.write("\n    Deletion completed.\n")
   return
-def createVolumeFromImage(parameters,clients):
+def createVolume(parameters,clients):
   """
   """
   
-  ensureGlanceClient(clients)
   ensureCinderClient(clients)
   
-  #Get a list of images owned by the current user
-  projectID=getProjectID(clients)
-  images=clients["glance"].images.list(owner=projectID)
   
-  #find the image to create volume from
-  imageToUse=None
-  for image in images:
-    if(image.name==parameters["image"] or image.id==parameters["image"]):
-      imageToUse=image
-      break
+  imageID=None
+  if "image" in parameters.keys():
+    ensureGlanceClient(clients)
   
-  #if image not found we have a problem
-  if imageToUse==None:
-    raise Exception("no image owned by the current user with name or id \""\
-      +parameters["image"]+"\" was found.\n")
+    #Get a list of images owned by the current user
+    #projectID=getProjectID(clients)
+    #images=clients["glance"].images.list(owner=projectID)
+    #allow all images to be used to create a volume from
+    images=clients["glance"].images.list()
+    
+    #find the image to create volume from
+    imageToUse=None
+    for image in images:
+      if(image.name==parameters["image"] or image.id==parameters["image"]):
+        imageToUse=image
+        break
+    
+    #if image not found we have a problem
+    if imageToUse==None:
+      raise Exception("no image with name or id \""+parameters["image"]
+        +"\" was found.\n")
   
+    imageID=imageToUse.id
+    
   alreadyExists="fail"
   if "already-exists" in parameters.keys():
     alreadyExists=parameters["already-exists"]
@@ -934,12 +945,14 @@ def createVolumeFromImage(parameters,clients):
         raise Exception("a volume with the name \""
           +str(parameters["volume-name"])+"\" already exists.")
   
-  currentMessage="  Creating volume \""+parameters["volume-name"]\
-    +"\" from image \""+parameters["image"]+"\""
-  
   #create the volume
+  if imageID!=None:
+    currentMessage="  Creating volume \""+parameters["volume-name"]\
+      +"\" from image \""+parameters["image"]+"\""
+  else:
+    currentMessage="  Creating an empty volume \""+parameters["volume-name"]+"\""
   volume=clients["cinder"].volumes.create(size=parameters["size"]
-    ,name=parameters["volume-name"],imageRef=imageToUse.id)
+    ,name=parameters["volume-name"],imageRef=imageID)
   
   volumeID=volume.id
   
@@ -965,7 +978,8 @@ def createVolumeFromImage(parameters,clients):
   
   #check that we haven't timed out
   if iter>=OSNumChecks and volumeDoesNotExists:
-    raise Exception("Timed out waiting for volume creation to complete.\n")
+    raise Exception("Timed out after waiting "+numChecks*OSCheckWaitTime
+      +" s for volume creation to complete.\n")
   
   #notify that creation has completed
   sys.stdout.write("\n    Creation completed.\n")
@@ -1016,7 +1030,6 @@ def addSecurityGroup(parameters,clients):
 #instance-create.
 exeFuncs={
   "terminate-instance":terminateInstance
-  ,"create-image-from-volume":createImageFromVolume
   ,"download-image":downloadImage
   ,"create-instance":createInstance
   ,"attach-volume":attachVolume
@@ -1024,6 +1037,7 @@ exeFuncs={
   ,"delete-image":deleteImage
   ,"upload-image":uploadImage
   ,"delete-volume":deleteVolume
-  ,"create-volume-from-image":createVolumeFromImage
+  ,"create-volume-from-image":createVolume
+  ,"create-volume":createVolume
   ,"add-security-group":addSecurityGroup
   }

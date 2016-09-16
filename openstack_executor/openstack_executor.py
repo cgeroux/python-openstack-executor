@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 import optparse as op
 from lxml import etree
@@ -43,7 +43,7 @@ def parseOptions():
   """
   
   parser=op.OptionParser(usage="Usage: %prog [options] SETTINGS.xml"
-    ,version="%prog 1.0",description="Performs actions specified in the "
+    ,version="%prog "+__version__,description="Performs actions specified in the "
     +"SETTINGS.xml file. These actions could be create a VM, attach "
     +"volumes, associate Floating IP, terminate VM, create an image "
     +"from volume, etc. See example SETTINGS.xml likely located in a "
