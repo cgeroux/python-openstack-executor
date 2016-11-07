@@ -41,7 +41,7 @@
       <dependency>vm-terminate</dependency>
     </dependencies>
     <parameters>
-      <create-volume-from-image><!-- creates a volume from an image -->
+      <create-volume><!-- creates a volume from an image -->
         <volume-name>data</volume-name><!-- name of the newly created volume. 
           There can not already be a volume with this name. -->
         <image>data-image</image><!-- name or id of the image to create the 
@@ -49,7 +49,7 @@
         <size>20</size><!-- size of the volume to create in GB. This must be at 
           least as large as the image. -->
         <already-exists>overwrite</already-exists>
-      </create-volume-from-image>
+      </create-volume>
     </parameters>
   </action>
   
@@ -60,12 +60,12 @@
       <dependency>vm-terminate</dependency>
     </dependencies>
     <parameters>
-      <create-volume-from-image>
+      <create-volume>
         <volume-name>root</volume-name>
         <image>root-image</image>
         <size>20</size>
         <already-exists>overwrite</already-exists>
-      </create-volume-from-image>
+      </create-volume>
     </parameters>
   </action>
   

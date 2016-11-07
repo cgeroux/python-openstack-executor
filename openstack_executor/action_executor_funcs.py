@@ -1029,7 +1029,8 @@ def addSecurityGroup(parameters,clients):
 #XML element type. See existing parameter-type.xsd xml type entries, e.g. 
 #instance-create.
 exeFuncs={
-  "terminate-instance":terminateInstance
+  "create-image-from-volume":createImageFromVolume
+  ,"terminate-instance":terminateInstance
   ,"download-image":downloadImage
   ,"create-instance":createInstance
   ,"attach-volume":attachVolume

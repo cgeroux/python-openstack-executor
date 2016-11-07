@@ -12,6 +12,7 @@
     <xs:choice>
       <xs:element name="create-instance" type="pt:create-instance-type"/>
       <xs:element name="terminate-instance" type="pt:terminate-instance-type"/>
+      <xs:element name="create-image-from-volume" type="pt:create-image-from-volume-type"/>
       <xs:element name="download-image" type="pt:download-image-type"/>
       <xs:element name="attach-volume" type="pt:attach-volume-type" />
       <xs:element name="associate-floating-ip" type="pt:associate-floating-ip-type" />
