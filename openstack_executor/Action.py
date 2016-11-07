@@ -76,7 +76,7 @@ class Action(object):
     result=xmlToDict(xmlParameterSpecific)
     return result
   def getType(self):
-    """Returns the aciton type
+    """Returns the action type
     """
     
     if self.type==None:

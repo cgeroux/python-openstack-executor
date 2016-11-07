@@ -348,12 +348,9 @@ def createInstance(parameters,clients):
   
   #TODO: add ability to supply a user data file
   
-  #TODO: add ability to specify key-pair
-  #print(clients["nova"].servers.create.__doc__)
-  
   #check to see if a key pair was specified
   keyName=None
-  if "key" in parameters.keys():
+  if "key-name" in parameters.keys():
     keyName=parameters["key-name"]
   
   alreadyExists="fail"
