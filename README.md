@@ -40,6 +40,10 @@ Requirements
   <pip-package-name>" in Ubuntu)
   
 + lxml
+
++ nose
+
+  If running the unit tests (see 'Development/Debugging Notes' section below)
   
 + OpenStack python clients
   
