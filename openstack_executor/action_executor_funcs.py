@@ -16,9 +16,9 @@ OSNumChecks=120#number of times to check for action completion
 gbPers=0.01
 waitAnimation="|\\-/"
 if authVersion=="2":
-  from .createOSClientsV2 import *
+  from . import createOSClientsV2 as osc
 elif authVersion=="3":
-  from .createOSClientsV3 import *
+  from . import createOSClientsV3 as osc
 else:
   raise Exception("Unexpected authorization version \""+authVersion+"\"")
 
@@ -26,7 +26,7 @@ def terminateInstance(parameters,clients):
   """Terminate an instance
   """
   
-  ensureNovaClient(clients)
+  osc.ensureNovaClient(clients)
   currentMessage="  Terminating instance \""+parameters["instance"]+"\""
   
   #get list of servers
@@ -82,12 +82,12 @@ def createImageFromVolume(parameters,clients):
   """Creates an image from a volume
   """
   
-  ensureCinderClient(clients)
-  ensureGlanceClient(clients)
+  osc.ensureCinderClient(clients)
+  osc.ensureGlanceClient(clients)
   
   #get the volume to image
   volumeToImage=None
-  projectID=getProjectID(clients)
+  projectID=osc.getProjectID(clients)
   volumes=clients["cinder"].volumes.list()
   for volume in volumes:
     if volume.name==parameters["volume"] or volume.id==parameters["volume"]:
@@ -199,7 +199,7 @@ def downloadImage(parameters,clients):
   """Downloads an image to the current working directory
   """
   
-  ensureGlanceClient(clients)
+  osc.ensureGlanceClient(clients)
   
   #check if we have a match-owner option
   matchOwner=True
@@ -209,7 +209,7 @@ def downloadImage(parameters,clients):
         #image as it won't find it
   
   #get a list of images
-  projectID=getProjectID(clients)
+  projectID=osc.getProjectID(clients)
   if matchOwner:
     images=clients["glance"].images.list(owner=projectID)
   else:
@@ -277,8 +277,7 @@ def createInstance(parameters,clients):
   """Creates an instance
   """
   
-  ensureNovaClient(clients)
-  ensureCinderClient(clients)
+  osc.ensureNovaClient(clients)
   
   #check that instance name is a valid hostname
   utilFuncs.validateHostName(parameters["name"])
@@ -361,34 +360,32 @@ def createInstance(parameters,clients):
   if options.alreadyExistsGlobal!=None:
     alreadyExists=options.alreadyExistsGlobal
   
-  #boot from a volume
-  if "volume" in parameters["instance-boot-source"].keys():
-    
-    #TODO: much of the below code is general to creating an instance in any
-    # way should pull this code out when I add other methods for creating VMs
-    
-    #check to see if we already have an instance with that name
-    try:
-      clients["nova"].servers.find(name=hostname)
-    except novaclient.exceptions.NotFound:
-      pass #name not used, this is good
+  #check to see if we already have an instance with that name
+  try:
+    clients["nova"].servers.find(name=hostname)
+  except novaclient.exceptions.NotFound:
+    pass #name not used, this is good
+  else:
+    if alreadyExists=="skip":
+      sys.stdout.write("\n  An instance with the name \""
+        +hostname
+        +"\" already exists, skipping creation.\n")
+      sys.stdout.flush()
+      return
+    elif alreadyExists=="overwrite":
+      sys.stdout.write("  An instance with the name \""+hostname
+        +"\" already exists, overwriting.\n")
+      sys.stdout.flush()
+      terminateInstance({"instance":hostname},clients)
     else:
-      if alreadyExists=="skip":
-        sys.stdout.write("\n  An instance with the name \""
-          +hostname
-          +"\" already exists, skipping creation.\n")
-        sys.stdout.flush()
-        return
-      elif alreadyExists=="overwrite":
-        sys.stdout.write("  An instance with the name \""+hostname
-          +"\" already exists, overwriting.\n")
-        sys.stdout.flush()
-        terminateInstance({"instance":hostname},clients)
-      else:
-        raise Exception("already an instance present with name \""
-          +hostname+"\".")
+      raise Exception("already an instance present with name \""
+        +hostname+"\".")
+  
+  #create the VM
+  if "volume" in parameters["instance-boot-source"].keys():#boot from a volume
     
     #get volume id
+    osc.ensureCinderClient(clients)
     volumes=clients["cinder"].volumes.list()
     volumeFound=False
     for volume in volumes:
@@ -417,10 +414,37 @@ def createInstance(parameters,clients):
       ,nics=nics
       ,key_name=keyName
       )
+  elif "image" in parameters["instance-boot-source"].keys():#boot form an image
+    
+    #make sure the image is available
+    osc.ensureGlanceClient(clients)
+    images=clients["glance"].images.list()
+  
+    bootImage=None
+    imageFound=False
+    for image in images:
+      if(image.name==parameters["instance-boot-source"]["image"]):
+        bootImage=image
+        imageFound=True
+    
+    if not imageFound:
+      raise Exception("the image \""+parameters["instance-boot-source"]["image"]+"\" not found")
+    
+    #Create the instance
+    currentMessage="    Booting from an image "
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+    instance=clients["nova"].servers.create(
+      name=hostname
+      ,flavor=flavor
+      ,image=bootImage
+      ,nics=nics
+      ,key_name=keyName
+      )
   else:
-    #TODO: implement other methods for creating a VM
-    raise NotImplementedError("Haven't implemented any other methods of "
-      +"creating an instance other than booting form a volume yet.")
+    #TODO: implement more methods for creating a VM
+    raise NotImplementedError("Haven't yet implemented methods of "
+      +"creating an instance other than booting form a volume or image yet.")
   
   #verify the VM was created and is running
   instanceNotActive=True
@@ -453,8 +477,8 @@ def attachVolume(parameters,clients):
   """Attaches a volume to an instance
   """
   
-  ensureNovaClient(clients)
-  ensureCinderClient(clients)
+  osc.ensureNovaClient(clients)
+  osc.ensureCinderClient(clients)
   
   #get instance
   servers=clients["nova"].servers.list()
@@ -545,7 +569,7 @@ def associateFloatingIP(parameters,clients):
   """Associates a floating IP with a specific instance
   """
   
-  ensureNovaClient(clients)
+  osc.ensureNovaClient(clients)
   
   #check if an ip was specified
   if "ip" in parameters.keys():
@@ -663,10 +687,10 @@ def deleteImage(parameters,clients):
   """Delete an image owned by the current user
   """
     
-  ensureGlanceClient(clients)
+  osc.ensureGlanceClient(clients)
   
   #Get a list of images owned by the current user
-  projectID=getProjectID(clients)
+  projectID=osc.getProjectID(clients)
   images=clients["glance"].images.list(owner=projectID)
   
   #find the image to delete
@@ -719,10 +743,10 @@ def uploadImage(parameters,clients):
   """Uploads an image file to OpenStack
   """
   
-  ensureGlanceClient(clients)
+  osc.ensureGlanceClient(clients)
   
   #check that an image with the given name doesn't already exist
-  projectID=getProjectID(clients)
+  projectID=osc.getProjectID(clients)
   images=clients["glance"].images.list(owner=projectID)
   
   alreadyExists="fail"
@@ -828,11 +852,11 @@ def deleteVolume(parameters,clients):
   """Deletes a volume
   """
   
-  ensureCinderClient(clients)
+  osc.ensureCinderClient(clients)
   
   #get the volume to delete
   volumeToDelete=None
-  projectID=getProjectID(clients)
+  projectID=osc.getProjectID(clients)
   volumes=clients["cinder"].volumes.list()
   for volume in volumes:
     if volume.name==parameters["volume"] or volume.id==parameters["volume"]:
@@ -885,15 +909,14 @@ def createVolume(parameters,clients):
   """
   """
   
-  ensureCinderClient(clients)
-  
+  osc.ensureCinderClient(clients)
   
   imageID=None
   if "image" in parameters.keys():
-    ensureGlanceClient(clients)
+    osc.ensureGlanceClient(clients)
   
     #Get a list of images owned by the current user
-    #projectID=getProjectID(clients)
+    #projectID=osc.getProjectID(clients)
     #images=clients["glance"].images.list(owner=projectID)
     #allow all images to be used to create a volume from
     images=clients["glance"].images.list()
@@ -985,7 +1008,7 @@ def addSecurityGroup(parameters,clients):
   """
   """
   
-  ensureNovaClient(clients)
+  osc.ensureNovaClient(clients)
   
   #get the requested security group
   securityGroupToAdd=None

@@ -7,12 +7,12 @@ from lxml import etree
 import os
 from .ActionManager import ActionManager
 
+#Both of these are used at least in action_executor_funcs.py
 authVersion="2"#default version is 2
 options=None
 
 class MissingEnvVariable(Exception):
   pass
-
 def addParserOptions(parser):
   """Adds command line options
   """
@@ -56,33 +56,29 @@ def parseOptions():
   
   #parse command line options
   return parser.parse_args()
-def main():
+def run(xmlActionsString):
+  """Runs openstack-executor on the given xml actions string.
   
-  global options
-  
-  #parse command line options
-  (options,args)=parseOptions()
-  
-  #check we got the expected number of arguments
-  if (len(args)!=1):
-    raise Exception("Expected an xml settings file.")
+  This function can be used by modules which import the openstack_executor
+  module to run the actions in the given xmlActions string.
+  """
   
   #load schema to validate against
   schemaFileName=os.path.join(os.path.dirname(__file__),"xmlSchema/actions.xsd")
   schema=etree.XMLSchema(file=schemaFileName)
   
   #parse xml file
-  tree=etree.parse(args[0])
+  root=etree.fromstring(xmlActionsString)
   
   #strip out any comments in xml
-  comments=tree.xpath('//comment()')
+  comments=root.xpath('//comment()')
   for c in comments:
     p=c.getparent()
     if p!=None:
       p.remove(c)
   
   #validate against schema
-  schema.assertValid(tree)
+  schema.assertValid(root)
   
   #check to see if the environment has the expected variables
   envVars=os.environ.keys()
@@ -113,9 +109,23 @@ def main():
   print("Authenticating against \""+os.environ["OS_AUTH_URL"]+"\"")
   
   #Parse XML Actions
-  xmlActions=tree.getroot()
-  actionManager=ActionManager(xmlActions)
+  actionManager=ActionManager(root)
   
   #perform the actions
   actionManager.performActions()
+def main():
+  
+  global options
+  
+  #parse command line options
+  (options,args)=parseOptions()
+  
+  #check we got the expected number of arguments
+  if (len(args)!=1):
+    raise Exception("Expected an xml settings file.")
+  
+  #read in the XML file and perform the described actions
+  f=open(args[0],'r')
+  xmlActionsStr=f.read()
+  run(xmlActionsStr)
   
