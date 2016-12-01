@@ -3,6 +3,7 @@ import time
 import sys
 import novaclient
 import threading
+import os
 from . import utilFuncs 
 from .openstack_executor import authVersion, options
 from . import formats
