@@ -78,7 +78,8 @@ def main():
   comments=tree.xpath('//comment()')
   for c in comments:
     p=c.getparent()
-    p.remove(c)
+    if p!=None:
+      p.remove(c)
   
   #validate against schema
   schema.assertValid(tree)
