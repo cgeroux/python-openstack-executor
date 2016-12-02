@@ -7,9 +7,6 @@ class Action(object):
   """
   """
   
-  exeFuncs=None
-  clients={}
-  
   def __init__(self,xmlAction=None):
     """Initialize the action
     """
@@ -37,7 +34,7 @@ class Action(object):
     """
     
     self.signalDependencyFunc=f
-  def setDependencyAsSatisfied(self,dependencyID):
+  def setDependencyAsSatisfied(self,dependencyID,exeFuncs,clients,osc,options):
     """Indicates to the action that the dependency named by dependencyID has been satisfied.
     
     If all dependencies have been satisfied will execute the action.
@@ -58,7 +55,7 @@ class Action(object):
     
     #check to see if all dependencies are satisfied
     if(self.allDependenciesMet()):
-      self.execute()
+      self.execute(exeFuncs,clients,osc,options)
   def getID(self):
     """ returns the action ID as specified in the XML
     """
@@ -106,7 +103,7 @@ class Action(object):
     """
     
     self.dependents.append(dependent)
-  def execute(self):
+  def execute(self,exeFuncs,clients,osc,options):
     """Executes the action, often this will be called from 
     setDependencyAsSatisfied once all dependencies have been flagged as
     satisfied. However, if there are no dependencies this can and should be
@@ -118,7 +115,7 @@ class Action(object):
       sys.stdout.write("Executing action \""+self.getID()+"\"\n")
       sys.stdout.flush()
       
-      Action.exeFuncs[self.getType()](self.getParameters(),Action.clients)
+      exeFuncs[self.getType()](self.getParameters(),clients,osc,options)
       
       #once finished need to tell dependents we are done
       for dependent in self.dependents:

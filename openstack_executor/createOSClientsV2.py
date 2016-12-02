@@ -29,7 +29,7 @@ def ensureCinderClient(clients):
     #create cinder client
     clients["cinder"]=createCinderClient(clients)
 def ensureKeyStoneClient(clients):
-  #make sure there is a cinder client
+  #make sure there is a KeyStone client
   if "keystone" not in clients.keys():
     
     #create keystone client

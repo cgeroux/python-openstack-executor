@@ -163,21 +163,6 @@ Development/Debugging Notes
 
 If you are developing openstack-executor these might be helpful notes.
 
-+ Running a non-installed version from the root package directory 
-  "python-openstack-executor"
-  
-  ```
-  $ python -m openstack_executor ACTIONS.xml
-  ```
-  
-  will execute the directory openstack_executor.
-  
-+ The script openstack-executor-runner.py can also be used to run the code as:
-
-  ```
-  $ ./openstack-executor-runner.py ACTIONS.xml
-  ```
-
 + To run a single test script (will show stdout):
   
   ```
@@ -187,24 +172,25 @@ If you are developing openstack-executor these might be helpful notes.
   This however, will import modules from the installation location so for changes 
   in your tested code to take effect they must be "installed" first.
   
-+ To run all tests showing only results (will not show stdout):
++ To run tests from a given directory (e.g. unit_tests of integration_tests) run:
   
   ```
-  $ python setup.py test
+  $ nosetests <path-to-directory-containing-tests-to-run>
   ```
   
+  If in the package root directory to run unit tests do:
   
-Integration Testing
--------------------
-
-+ run the example xml files in openstack_executor/example_action_xml_files
-
-+ this requires that at the very least
-    * a bootable volume named "root"
-    * an attachable volume named "data"
-    * the ip address 206.12.96.177 available to associate with a VM
-    * the flavor "c4-15gb-205" 
-+ the expected order is 
-    * backup_server.xml
-    * delete_server_volumes_and_images.xml
-    * restore_from_backup.xml
+  ```
+  $ nosetests openstack_executor/tests/unit_tests/
+  ```
+  
+  and to run integration tests do:
+  
+  ```
+  $ nosetests openstack_executor/tests/integration_tests/
+  ```
+  
+  Note that most integration tests require the an OpenStack project's RC 
+  file to have been sourced before running the tests. It can also be nice to
+  use the ```-s``` option to see standard output from the tests so you can
+  tell what is going on, especially with the integration tests.

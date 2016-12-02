@@ -5,7 +5,6 @@ import novaclient
 import threading
 import os
 from . import utilFuncs 
-from .openstack_executor import authVersion, options
 from . import formats
 
 OSCheckWaitTime=1#time to wait between polling OS to check for action 
@@ -16,14 +15,9 @@ OSNumChecks=120#number of times to check for action completion
 #volume with 805MB of data taking 57s to create an image from
 gbPers=0.01
 waitAnimation="|\\-/"
-if authVersion=="2":
-  from . import createOSClientsV2 as osc
-elif authVersion=="3":
-  from . import createOSClientsV3 as osc
-else:
-  raise Exception("Unexpected authorization version \""+authVersion+"\"")
+#TODO: add a function to remove security groups
 
-def terminateInstance(parameters,clients):
+def terminateInstance(parameters,clients,osc,options):
   """Terminate an instance
   """
   
@@ -79,7 +73,7 @@ def terminateInstance(parameters,clients):
   #notify that termination has completed
   sys.stdout.write("\n    Termination completed.\n")
   return
-def createImageFromVolume(parameters,clients):
+def createImageFromVolume(parameters,clients,osc,options):
   """Creates an image from a volume
   """
   
@@ -125,7 +119,7 @@ def createImageFromVolume(parameters,clients):
           +str(parameters["image-name"])
           +"\" already exists, overwriting.\n")
         sys.stdout.flush()
-        deleteImage({"image":image.id},clients)
+        deleteImage({"image":image.id},clients,osc,options)
       else:
         raise Exception("an image with the name \""
           +str(parameters["image-name"])+"\" already exists.")
@@ -196,7 +190,7 @@ def createImageFromVolume(parameters,clients):
   #notify that image creation has completed
   sys.stdout.write("\n    Image creation completed.\n")
   return
-def downloadImage(parameters,clients):
+def downloadImage(parameters,clients,osc,options):
   """Downloads an image to the current working directory
   """
   
@@ -274,7 +268,7 @@ def downloadImage(parameters,clients):
   #notify that image download has completed
   sys.stdout.write("\n    Image download completed.\n")
   return
-def createInstance(parameters,clients):
+def createInstance(parameters,clients,osc,options):
   """Creates an instance
   """
   
@@ -377,7 +371,7 @@ def createInstance(parameters,clients):
       sys.stdout.write("  An instance with the name \""+hostname
         +"\" already exists, overwriting.\n")
       sys.stdout.flush()
-      terminateInstance({"instance":hostname},clients)
+      terminateInstance({"instance":hostname},clients,osc,options)
     else:
       raise Exception("already an instance present with name \""
         +hostname+"\".")
@@ -474,7 +468,7 @@ def createInstance(parameters,clients):
       +hostname+"\" to become active.")
   
   sys.stdout.write("\n    Creation completed.\n")
-def attachVolume(parameters,clients):
+def attachVolume(parameters,clients,osc,options):
   """Attaches a volume to an instance
   """
   
@@ -566,7 +560,7 @@ def attachVolume(parameters,clients):
   #notify that termination has completed
   sys.stdout.write("\n    Attachment completed.\n")
   return
-def associateFloatingIP(parameters,clients):
+def associateFloatingIP(parameters,clients,osc,options):
   """Associates a floating IP with a specific instance
   """
   
@@ -684,7 +678,82 @@ def associateFloatingIP(parameters,clients):
   
   sys.stdout.write("\n    Association completed.\n")
   return
-def deleteImage(parameters,clients):
+def releaseFloatingIP(parameters,clients,osc,options):
+  """Releases an IP associated with a given VM back to the IP pool
+  """
+  
+  osc.ensureNovaClient(clients)
+  
+  currentMessage="  Releasing floating IP associated with instance \""\
+    +parameters["instance"]+"\""
+  
+  #get list of servers
+  servers=clients["nova"].servers.list()
+  serverToReleaseIPOf=None
+  for server in servers:
+    if server.name==parameters["instance"] or server.id==parameters["instance"]:
+      serverToReleaseIPOf=server
+      break
+  
+  #if no server found
+  if serverToReleaseIPOf==None:
+    sys.stdout.write("    WARNING: No instance found with name or id \""
+      +parameters["instance"]+"\". Not releasing any IP!\n")
+    return
+  
+  #now we should have our server, get the floating IP
+  floatingIPAddr=None
+  for network in serverToReleaseIPOf.addresses.keys():
+    for address in serverToReleaseIPOf.addresses[network]:
+      #address['version']=4
+      #address['OS-EXT-IPS:type']='fixed'/'floating'
+      #address['addr']=192.../206...
+      #address['OS-EXT-IPS-MAC:mac_addr']='fa:16:3e:03:a4:7b'
+      if address['OS-EXT-IPS:type']=='floating':
+        floatingIPAddr=address['addr']
+  
+  #if no floating IP found
+  if floatingIPAddr==None:
+    sys.stdout.write("    WARNING: Instance \""+parameters["instance"]
+      +"\" does not have a floating IP. nothing to release!\n")
+    return
+  
+  ipList=clients["nova"].floating_ips.list()
+  idOfReleasedIP=None
+  for ip in ipList:
+    if ip.ip==floatingIPAddr:
+      idOfReleasedIP=ip.id
+      clients["nova"].floating_ips.delete(ip)
+  
+  #check for the ip to have been released
+  #wait until ip is associated
+  ipStillAllocated=True
+  iter=0
+  while ipStillAllocated and iter<OSNumChecks:
+    
+    sys.stdout.write(currentMessage+" {0}\r".format(
+      waitAnimation[iter%len(waitAnimation)]))
+    sys.stdout.flush()
+    
+    ipFound=False
+    ipList=clients["nova"].floating_ips.list()
+    for ip in ipList:
+      if ip.id==idOfReleasedIP:
+        ipFound=True
+        break
+    if not ipFound:
+      ipStillAllocated=False
+      break
+    
+    #wait some amount of time before checking again
+    time.sleep(OSCheckWaitTime)
+    iter+=1
+  
+  if ipStillAllocated and iter>=OSNumChecks:
+    raise Exception("Timed out while waiting for floating ip to be released.")
+  
+  sys.stdout.write("\n    Release completed.\n")
+def deleteImage(parameters,clients,osc,options):
   """Delete an image owned by the current user
   """
     
@@ -740,7 +809,7 @@ def deleteImage(parameters,clients):
   #notify that image deletion has completed
   sys.stdout.write("\n    Image deletion completed.\n")
   return
-def uploadImage(parameters,clients):
+def uploadImage(parameters,clients,osc,options):
   """Uploads an image file to OpenStack
   """
   
@@ -772,7 +841,7 @@ def uploadImage(parameters,clients):
           +str(parameters["image-name"])
           +"\" already exists, overwriting.\n")
         sys.stdout.flush()
-        deleteImage({"image":image.id},clients)
+        deleteImage({"image":image.id},clients,osc,options)
       else:
         raise Exception("an image with the name \""+parameters["image-name"]
           +" already exists!")
@@ -849,7 +918,7 @@ def uploadImage(parameters,clients):
   #notify that termination has completed
   sys.stdout.write("\n    Upload completed.\n")
   return
-def deleteVolume(parameters,clients):
+def deleteVolume(parameters,clients,osc,options):
   """Deletes a volume
   """
   
@@ -906,7 +975,7 @@ def deleteVolume(parameters,clients):
   #notify that termination has completed
   sys.stdout.write("\n    Deletion completed.\n")
   return
-def createVolume(parameters,clients):
+def createVolume(parameters,clients,osc,options):
   """
   """
   
@@ -961,7 +1030,7 @@ def createVolume(parameters,clients):
           +str(parameters["volume-name"])
           +"\" already exists, overwriting.\n")
         sys.stdout.flush()
-        deleteVolume({"volume":volume.id},clients)
+        deleteVolume({"volume":volume.id},clients,osc,options)
       else:
         raise Exception("a volume with the name \""
           +str(parameters["volume-name"])+"\" already exists.")
@@ -1005,7 +1074,7 @@ def createVolume(parameters,clients):
   #notify that creation has completed
   sys.stdout.write("\n    Creation completed.\n")
   return
-def addSecurityGroup(parameters,clients):
+def addSecurityGroup(parameters,clients,osc,options):
   """
   """
   
@@ -1062,4 +1131,5 @@ exeFuncs={
   ,"create-volume-from-image":createVolume
   ,"create-volume":createVolume
   ,"add-security-group":addSecurityGroup
+  ,"release-floating-ip":releaseFloatingIP
   }

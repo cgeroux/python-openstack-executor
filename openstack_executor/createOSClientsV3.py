@@ -56,7 +56,7 @@ def ensureGlanceClient(clients):
     #create glance client
     clients["glance"]=createGlanceClient(clients)
 def ensureSession(clients):
-  #make sure there is a cinder client
+  #make sure there is a session
   if "session" not in clients.keys():
     
     #create keystone client

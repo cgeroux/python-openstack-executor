@@ -16,6 +16,7 @@
       <xs:element name="download-image" type="pt:download-image-type"/>
       <xs:element name="attach-volume" type="pt:attach-volume-type" />
       <xs:element name="associate-floating-ip" type="pt:associate-floating-ip-type" />
+      <xs:element name="release-floating-ip" type="pt:release-floating-ip-type" />
       <xs:element name="delete-image" type="pt:delete-image-type" />
       <xs:element name="upload-image" type="pt:upload-image-type" />
       <xs:element name="delete-volume" type="pt:delete-volume-type" />
@@ -76,6 +77,12 @@
     <xs:all>
       <xs:element name="ip" type="cm:IP-type" minOccurs="0"/>
       <xs:element name="pool" type="cm:non-empty-str" minOccurs="0"/>
+      <xs:element name="instance" type="cm:non-empty-str"/>
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="release-floating-ip-type">
+    <xs:all>
       <xs:element name="instance" type="cm:non-empty-str"/>
     </xs:all>
   </xs:complexType>
