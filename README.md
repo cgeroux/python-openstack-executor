@@ -190,6 +190,14 @@ If you are developing openstack-executor these might be helpful notes.
   $ nosetests openstack_executor/tests/integration_tests/
   ```
   
+  To run a specific test function run something like:
+  
+  ```
+  $ nosetests openstack_executor/tests/integration_tests/test_action_executor_funcs.py:TestComputeVMTasks.test_00_createVMFromImage
+  ```
+  
+  or to run all tests in a given testing class the ```.<method_name>``` part in the above command can be ommitted.
+  
   Note that most integration tests require the an OpenStack project's RC 
   file to have been sourced before running the tests. It can also be nice to
   use the ```-s``` option to see standard output from the tests so you can

@@ -30,16 +30,24 @@ else:
 
 vmName="openstack-executor-integration-test-vm"
 
-class TestVMCreation(unittest.TestCase):
-  #TODO: add tests for functions:
-  #  downloadImage
-  #  attachVolume
-  #  uploadImage
-  #  createVolume (not from an image)
-  #  addSecurityGroup
-  #  
-  # In addition I could also exercise the various functions under different
-  # conditions e.g. overwriting something, skipping etc.
+#TODO: 
+# I should have more stringent tests for success conditions (e.g. 
+# actually check that a vm or volume was created as expected) 
+# rather than just assume everything went OK if an exception wasn't thrown 
+# or just trying to watch what happens in the openstack dashboard.
+#
+# add tests for functions:
+#  downloadImage
+#  attachVolume
+#  uploadImage
+#  createVolume (not from an image)
+#  addSecurityGroup
+#  
+# In addition I could also exercise the various functions under different
+# conditions e.g. overwriting something, skipping etc.
+
+class TestPersistentVMTasks(unittest.TestCase):
+
   def test_00_volumeCreateFromImage(self):
     """
     """
@@ -197,5 +205,88 @@ class TestVMCreation(unittest.TestCase):
     """
     
     openstack_executor.run(xml,options)
+class TestComputeVMTasks(unittest.TestCase):
+  def test_00_createVMFromImage(self):
+
+    """Tests the creation of a VM
+    """
+    
+    xml="""
+      <actions version="0.0">
+        <action>
+          <id>vm-create</id>
+          <parameters>
+            <create-instance>
+              <name>"""+vmName+"""</name>
+              <flavor>"""+flavor+"""</flavor>
+              <instance-boot-source>
+                <image>"""+imageName+"""</image>
+              </instance-boot-source>
+              <already-exists>overwrite</already-exists>
+            </create-instance>
+          </parameters>
+        </action>
+      </actions>
+    """
+    
+    openstack_executor.run(xml,options)
+  def test_01_createMultipleVMsFromImageRename(self):
+
+    """Tests the creation of a VM
+    """
+    
+    xml="""
+      <actions version="0.0">
+        <action>
+          <id>vm-create</id>
+          <parameters>
+            <create-instance>
+              <name>"""+vmName+"""</name>
+              <instance-count>2</instance-count>
+              <flavor>"""+flavor+"""</flavor>
+              <instance-boot-source>
+                <image>"""+imageName+"""</image>
+              </instance-boot-source>
+              <already-exists>rename</already-exists>
+            </create-instance>
+          </parameters>
+        </action>
+      </actions>
+    """
+    
+    openstack_executor.run(xml,options)
+  def test_02_terminateAllVMs(self):
+    
+    xml="""
+      <actions version="0.0">
+        <action>
+          <id>vm-terminate-0</id>
+          <parameters>
+            <terminate-instance>
+              <instance>"""+vmName+"""</instance>
+            </terminate-instance>
+          </parameters>
+        </action>
+        <action>
+          <id>vm-terminate-1</id>
+          <parameters>
+            <terminate-instance>
+              <instance>"""+vmName+"""-0</instance>
+            </terminate-instance>
+          </parameters>
+        </action>
+        <action>
+          <id>vm-terminate-2</id>
+          <parameters>
+            <terminate-instance>
+              <instance>"""+vmName+"""-1</instance>
+            </terminate-instance>
+          </parameters>
+        </action>
+      </actions>
+    """
+    
+    openstack_executor.run(xml,options)
+  
 if __name__=="__main__":
   unittest.main()

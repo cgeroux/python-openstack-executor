@@ -140,6 +140,7 @@
       <xs:enumeration value="skip"/>
       <xs:enumeration value="overwrite"/>
       <xs:enumeration value="fail"/>
+      <xs:enumeration value="rename"/>
     </xs:restriction>
   </xs:simpleType>
   

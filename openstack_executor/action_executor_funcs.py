@@ -16,7 +16,17 @@ OSNumChecks=120#number of times to check for action completion
 gbPers=0.01
 waitAnimation="|\\-/"
 #TODO: add a function to remove security groups
-
+def vmExists(osc,clients,hostname):
+  """Checks to see if a VM already exists with the given hostname
+  """
+  
+  osc.ensureNovaClient(clients)
+  try:
+    servers=clients["nova"].servers.findall(name=hostname)
+    if len(servers)>=1:
+      return True
+  except novaclient.exceptions.NotFound:
+    return False
 def terminateInstance(parameters,clients,osc,options):
   """Terminate an instance
   """
@@ -272,6 +282,18 @@ def createInstance(parameters,clients,osc,options):
   """Creates an instance
   """
   
+  #get number of instances to create
+  instanceCount=1
+  if "instance-count" in parameters.keys():
+    instanceCount=int(parameters["instance-count"])
+  
+  #make sure we aren't creating multiple instances and booting from a volume
+  #this is a bit tricky to do, and OpenStack doesn't even do this
+  if instanceCount>1:
+    if "volume" in parameters["instance-boot-source"].keys():
+      raise Exception("Can not create multiple instances when booting "
+        +"form a volume!")
+  
   osc.ensureNovaClient(clients)
   
   #check that instance name is a valid hostname
@@ -280,8 +302,12 @@ def createInstance(parameters,clients,osc,options):
   #use lower case host names for consistency as they should be case insensitive
   hostname=parameters["name"].lower()
   
-  sys.stdout.write("  Creating instance \""+hostname+"\" ")
-  sys.stdout.flush()
+  if instanceCount>1:
+    sys.stdout.write("  Creating "+str(instanceCount)+" instances of \""+hostname+"\" ")
+    sys.stdout.flush()
+  else:
+    sys.stdout.write("  Creating instance \""+hostname+"\" ")
+    sys.stdout.flush()
   
   #get a network to attach to
   if "network" in parameters.keys():
@@ -337,9 +363,6 @@ def createInstance(parameters,clients,osc,options):
       +"\" not in list of available flavors "+str(flavorNames))
   flavor=clients["nova"].flavors.find(name=parameters["flavor"])
   
-  #TODO: allow creating multiple instances
-  #parameters["instance-count"]
-  
   #TODO: add ability to supply a user data file
   
   #check to see if a key pair was specified
@@ -355,12 +378,24 @@ def createInstance(parameters,clients,osc,options):
   if options.alreadyExistsGlobal!=None:
     alreadyExists=options.alreadyExistsGlobal
   
-  #check to see if we already have an instance with that name
-  try:
-    clients["nova"].servers.find(name=hostname)
-  except novaclient.exceptions.NotFound:
-    pass #name not used, this is good
+  #Quantities used if renaming an instance if it already exists
+  #check if name already has a -# on the end
+  index=hostname.rfind("-")
+  if index==-1:
+    baseName=hostname
+    count=0
   else:
+    try:
+      baseName=hostname[:index]
+      count=int(hostname[index+1:])
+    except ValueError:#e.g. not an integer after "-"
+      baseName=hostname
+      count=0
+  if instanceCount>1:
+    hostname=baseName+"-"+str(count)
+  
+  #check to see if we already have an instance with that name
+  if vmExists(osc,clients,hostname):
     if alreadyExists=="skip":
       sys.stdout.write("\n  An instance with the name \""
         +hostname
@@ -372,11 +407,21 @@ def createInstance(parameters,clients,osc,options):
         +"\" already exists, overwriting.\n")
       sys.stdout.flush()
       terminateInstance({"instance":hostname},clients,osc,options)
+    elif alreadyExists=="rename":
+      hostnameTry=baseName+"-"+str(count)
+      while vmExists(osc,clients,hostnameTry):
+        count+=1
+        hostnameTry=baseName+"-"+str(count)
+      sys.stdout.write("\n    An instance with the name \""+hostname
+        +"\" already exists, using name \""+hostnameTry+"\" instead.")
+      sys.stdout.flush()
+      hostname=hostnameTry
     else:
       raise Exception("already an instance present with name \""
         +hostname+"\".")
   
   #create the VM
+  hostNamesToCheck=[]
   if "volume" in parameters["instance-boot-source"].keys():#boot from a volume
     
     #get volume id
@@ -409,6 +454,7 @@ def createInstance(parameters,clients,osc,options):
       ,nics=nics
       ,key_name=keyName
       )
+    hostNamesToCheck.append(hostname)
   elif "image" in parameters["instance-boot-source"].keys():#boot form an image
     
     #make sure the image is available
@@ -426,44 +472,65 @@ def createInstance(parameters,clients,osc,options):
       raise Exception("the image \""+parameters["instance-boot-source"]["image"]+"\" not found")
     
     #Create the instance
-    currentMessage="    Booting from an image "
+    if instanceCount>1:
+      currentMessage="    Booting "+str(instanceCount)+" instances from an image "
+    else:
+      currentMessage="    Booting from an image "
+    
     sys.stdout.write("\n")
     sys.stdout.flush()
-    instance=clients["nova"].servers.create(
-      name=hostname
-      ,flavor=flavor
-      ,image=bootImage
-      ,nics=nics
-      ,key_name=keyName
-      )
+    if instanceCount>1:
+      for i in range(instanceCount):
+        hostname=baseName+"-"+str(count)
+        instance=clients["nova"].servers.create(
+          name=hostname
+          ,flavor=flavor
+          ,image=bootImage
+          ,nics=nics
+          ,key_name=keyName
+          )
+        count+=1
+        hostNamesToCheck.append(hostname)
+    else:
+      instance=clients["nova"].servers.create(
+        name=hostname
+        ,flavor=flavor
+        ,image=bootImage
+        ,nics=nics
+        ,key_name=keyName
+        )
+      hostNamesToCheck.append(hostname)
   else:
     #TODO: implement more methods for creating a VM
     raise NotImplementedError("Haven't yet implemented methods of "
       +"creating an instance other than booting form a volume or image yet.")
   
   #verify the VM was created and is running
-  instanceNotActive=True
+  allInstanceNotActive=True
   iter=0
-  while instanceNotActive and iter<OSNumChecks:
+  while allInstanceNotActive and iter<OSNumChecks:
     
-    try:
-      existingNode=clients["nova"].servers.find(name=hostname)
-      if(existingNode.status=="ACTIVE"):
-        instanceNotActive=False
-        break
-    except novaclient.exceptions.NotFound:
-      pass#keep waiting for instance to show up
-    
-    if instanceNotActive:
+    activeCount=0
+    for hostname in hostNamesToCheck:
+      try:
+        existingNode=clients["nova"].servers.find(name=hostname)
+        if(existingNode.status=="ACTIVE"):
+          activeCount+=1
+      except novaclient.exceptions.NotFound:
+        pass#keep waiting for instance to show up
+      
+    if activeCount!=instanceCount:
       sys.stdout.write(currentMessage+" {0}\r".format(
         waitAnimation[iter%len(waitAnimation)]))
       sys.stdout.flush()
       #wait some amount of time before checking again
       time.sleep(OSCheckWaitTime)
+    else:
+      allInstanceNotActive=False
     iter+=1
   
   #check that instance is now active
-  if instanceNotActive:
+  if allInstanceNotActive:
     raise Exception("Timed out while waiting for new instance \""
       +hostname+"\" to become active.")
   
