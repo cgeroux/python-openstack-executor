@@ -53,29 +53,9 @@ def parseOptions():
   
   #parse command line options
   return parser.parse_args()
-def run(xmlActionsString,options):
-  """Runs openstack-executor on the given xml actions string.
-  
-  This function can be used by modules which import the openstack_executor
-  module to run the actions in the given xmlActions string.
+def getOSClients():
+  """Returns OpenStack client utilities
   """
-  
-  #load schema to validate against
-  schemaFileName=os.path.join(os.path.dirname(__file__),"xmlSchema/actions.xsd")
-  schema=etree.XMLSchema(file=schemaFileName)
-  
-  #parse xml file
-  root=etree.fromstring(xmlActionsString)
-  
-  #strip out any comments in xml
-  comments=root.xpath('//comment()')
-  for c in comments:
-    p=c.getparent()
-    if p!=None:
-      p.remove(c)
-  
-  #validate against schema
-  schema.assertValid(root)
   
   #check to see if the environment has the expected variables
   envVars=os.environ.keys()
@@ -110,6 +90,33 @@ def run(xmlActionsString,options):
     from . import createOSClientsV3 as osc
   else:
     raise Exception("Unexpected authorization version \""+authVersion+"\"")
+  return osc
+def run(xmlActionsString,options):
+  """Runs openstack-executor on the given xml actions string.
+  
+  This function can be used by modules which import the openstack_executor
+  module to run the actions in the given xmlActions string.
+  """
+  
+  #load schema to validate against
+  schemaFileName=os.path.join(os.path.dirname(__file__),"xmlSchema/actions.xsd")
+  schema=etree.XMLSchema(file=schemaFileName)
+  
+  #parse xml file
+  root=etree.fromstring(xmlActionsString)
+  
+  #strip out any comments in xml
+  comments=root.xpath('//comment()')
+  for c in comments:
+    p=c.getparent()
+    if p!=None:
+      p.remove(c)
+  
+  #validate against schema
+  schema.assertValid(root)
+  
+  #get OpenStack client utilities
+  osc=getOSClients()
   
   #Parse XML Actions
   actionManager=ActionManager(root,osc,options,exeFuncs)

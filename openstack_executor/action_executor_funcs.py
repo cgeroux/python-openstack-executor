@@ -7,6 +7,10 @@ import os
 from . import utilFuncs 
 from . import formats
 
+#TODO: 
+# - add a function to remove a security group from a VM
+# - add a function to create a security group
+
 OSCheckWaitTime=1#time to wait between polling OS to check for action 
   #completion in seconds
 OSNumChecks=120#number of times to check for action completion
@@ -15,18 +19,102 @@ OSNumChecks=120#number of times to check for action completion
 #volume with 805MB of data taking 57s to create an image from
 gbPers=0.01
 waitAnimation="|\\-/"
-#TODO: add a function to remove security groups
-def vmExists(osc,clients,hostname):
-  """Checks to see if a VM already exists with the given hostname
+
+#helper functions
+activeStrings=["ACTIVE","active","available"]
+def isList(item):
+  if type(item)==type([]) or type(item)==novaclient.base.ListWithMeta:
+    return True
+  return False
+def isActive(osItem):
+  """Returns true if the given OpenStack item is active, otherwise false
+  """
+  if isList(osItem):#if a list ensure all in list are active
+    activeCount=0
+    for item in osItem:
+      if item.status in activeStrings:
+        activeCount+=1
+    return activeCount==len(osItem)
+  else:
+    if osItem is not None:#Note != will not work here due to stupid OpenStack bug
+      return osItem.status in activeStrings
+    else:
+      return False
+def getVM(osc,clients,hostname):
+  """Returns either None if no VM found, a server object if one VM is found,
+    or a list of VMs if more than one is found
   """
   
   osc.ensureNovaClient(clients)
   try:
     servers=clients["nova"].servers.findall(name=hostname)
-    if len(servers)>=1:
-      return True
+    if len(servers)==0:
+      return None
+    if len(servers)==1:
+      return servers[0]
+    elif len(servers)>=1:
+      return servers
   except novaclient.exceptions.NotFound:
-    return False
+    return None
+def getImage(osc,clients,imageName,project=True):
+  """Returns either None if no image found, an image object if one image is found,
+    or a list of images if more than one is found
+  
+  if project is True then search limited to current users project
+  """
+  
+  osc.ensureGlanceClient(clients)
+  if project:
+    projectID=osc.getProjectID(clients)
+    images=clients["glance"].images.list(owner=projectID)
+  else:
+    images=clients["glance"].images.list()
+  matchingImages=[]
+  for image in images:
+
+    if image.name==imageName or image.id==imageName:
+      matchingImages.append(image)
+  if len(matchingImages)==0:
+    return None
+  elif len(matchingImages)==1:
+    return matchingImages[0]
+  else:
+    return matchingImages
+def getVolume(osc,clients,volumeName):
+  """Returns either None if no volume found, a volume object if one volume is found,
+    or a list of volumes if more than one is found
+  """
+  
+  osc.ensureCinderClient(clients)
+  volumes=clients["cinder"].volumes.list()
+  matchingVolumes=[]
+  for volume in volumes:
+    if volume.name==volumeName or volume.id==volumeName:
+      matchingVolumes.append(volume)
+  if len(matchingVolumes)==0:
+    return None
+  elif len(matchingVolumes)==1:
+    return matchingVolumes[0]
+  else:
+    return matchingVolumes
+def getSecurityGroup(osc,clients,groupName):
+  """Returns either None if no group found, a group object if one group is found,
+    or a list of groups if more than one is found
+  """
+  
+  securityGroups=clients["nova"].security_groups.list()
+  matchingGroups=[]
+  for securityGroup in securityGroups:
+    if securityGroup.name==groupName or securityGroup.id==groupName:
+        matchingGroups.append(securityGroup)
+  if len(matchingGroups)==0:
+    return None
+  elif len(matchingGroups)==1:
+    return matchingGroups[0]
+  else:
+    return matchingGroups
+  
+#main action functions
 def terminateInstance(parameters,clients,osc,options):
   """Terminate an instance
   """
@@ -35,19 +123,26 @@ def terminateInstance(parameters,clients,osc,options):
   currentMessage="  Terminating instance \""+parameters["instance"]+"\""
   
   #get list of servers
-  servers=clients["nova"].servers.list()
-  serverToTerminate=None
-  for server in servers:
-    if server.name==parameters["instance"] or server.id==parameters["instance"]:
-      serverToTerminate=server
+  serverToTerminate=getVM(osc,clients,parameters["instance"])
+  if serverToTerminate is not None:#again stupid openstack bug, can't use !=
+    if isList(serverToTerminate):
+      raise Exception("Found multiple servers matching the given instance \""
+        +parameters["instance"]
+        +"\" for safety reasons will only delete uniquely identified severs.")
+      #Not going to process multiple server terminates as we don't want to 
+      #mistakenly delete the wrong one, that could be bad
+      #for server in serverToTerminate:
+      #  clients["nova"].servers.delete(server)
+    else:
       clients["nova"].servers.delete(serverToTerminate)
-      break
-  
-  #if no server found
-  if serverToTerminate==None:
+  else:
     sys.stdout.write("    WARNING: No instance found with name or id \""
       +parameters["instance"]+"\". Nothing to terminate!\n")
     return
+  
+  #clients={}#re-initialize connection, it seems that if not 
+  #re-initializing the terminate check for termination can lag behind on a re-connection.
+  #osc.ensureNovaClient(clients)
   
   #wait until action is completed
   serverPresent=True
@@ -55,12 +150,17 @@ def terminateInstance(parameters,clients,osc,options):
   while serverPresent and iter<OSNumChecks:
     
     #is the instance still there?
-    servers=clients["nova"].servers.list()
     found=False
-    for server in servers:
-      if server.id==serverToTerminate.id:
-        found=True
-        break
+    #for safety reasons we aren't going to terminate multiple VMs
+    #if isList(serverToTerminate):
+    #  for server in serverToTerminate:
+    #    vm=getVM(osc,clients,server.id)
+    #    if server is not None:
+    #      found=True
+    #else:
+    server=getVM(osc,clients,serverToTerminate.id)
+    if server is not None:
+      found=True
     
     #if server still there, lets wait
     if found:
@@ -72,6 +172,12 @@ def terminateInstance(parameters,clients,osc,options):
       time.sleep(OSCheckWaitTime)
     else:
       serverPresent=False
+      
+      #wait some amount of time before finalizing
+      #seems sometimes the above checks are a bit out of sync
+      #with later tests, this helps to ensure things are consistent
+      #once this function returns
+      time.sleep(OSCheckWaitTime)
     
     #increment number of checks
     iter+=1
@@ -87,26 +193,12 @@ def createImageFromVolume(parameters,clients,osc,options):
   """Creates an image from a volume
   """
   
-  osc.ensureCinderClient(clients)
-  osc.ensureGlanceClient(clients)
-  
   #get the volume to image
-  volumeToImage=None
-  projectID=osc.getProjectID(clients)
-  volumes=clients["cinder"].volumes.list()
-  for volume in volumes:
-    if volume.name==parameters["volume"] or volume.id==parameters["volume"]:
-      volumeToImage=volume
-      break
+  volumeToImage=getVolume(osc,clients,parameters["volume"])
   
   if volumeToImage==None:
     raise Exception("volume with name or id \""+parameters["volume"]
       +"\" not found!")
-  
-  #check if there is an image with that name already
-  #technically there can be multiple images with the same name
-  #but that makes things complicated
-  images=clients["glance"].images.list(owner=projectID)
   
   alreadyExists="fail"
   if "already-exists" in parameters.keys():
@@ -116,23 +208,24 @@ def createImageFromVolume(parameters,clients,osc,options):
   if options.alreadyExistsGlobal!=None:
     alreadyExists=options.alreadyExistsGlobal
   
-  for image in images:
-    if(image.name==parameters["image-name"]):
-      if alreadyExists=="skip":
-        sys.stdout.write("  An image with the name \""
-          +str(parameters["image-name"])
-          +"\" already exists, skipping creation.\n")
-        sys.stdout.flush()
-        return
-      elif alreadyExists=="overwrite":
-        sys.stdout.write("  An image with the name \""
-          +str(parameters["image-name"])
-          +"\" already exists, overwriting.\n")
-        sys.stdout.flush()
-        deleteImage({"image":image.id},clients,osc,options)
-      else:
-        raise Exception("an image with the name \""
-          +str(parameters["image-name"])+"\" already exists.")
+  #check for existence of image
+  image=getImage(osc,clients,parameters["image-name"])
+  if image is not None:
+    if alreadyExists=="skip":
+      sys.stdout.write("  An image with the name \""
+        +str(parameters["image-name"])
+        +"\" already exists, skipping creation.\n")
+      sys.stdout.flush()
+      return
+    elif alreadyExists=="overwrite":
+      sys.stdout.write("  An image with the name \""
+        +str(parameters["image-name"])
+        +"\" already exists, overwriting.\n")
+      sys.stdout.flush()
+      deleteImage({"image":image.id},clients,osc,options)
+    else:
+      raise Exception("an image with the name \""
+        +str(parameters["image-name"])+"\" already exists.")
   
   currentMessage="  Creating image \""+parameters["image-name"] \
     +"\" from volume \""+parameters["volume"]+"\" "
@@ -156,18 +249,14 @@ def createImageFromVolume(parameters,clients,osc,options):
       waitAnimation[iter%len(waitAnimation)]))
     sys.stdout.flush()
     
-    images=clients["glance"].images.list(owner=projectID)
-    for image in images:
-
-      if image.name==parameters["image-name"]:
-        imageCreated=True
-        currentMessage="    Image created, uploading volume data to image"
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-        break
-        
-
-    
+    image=getImage(osc,clients,parameters["image-name"])
+    if image is not None:
+      imageCreated=True
+      currentMessage="    Image created, uploading volume data to image"
+      sys.stdout.write("\n")
+      sys.stdout.flush()
+      break
+  
   #check that the image has been created
   imageNotActive=True
   iter=0
@@ -181,14 +270,10 @@ def createImageFromVolume(parameters,clients,osc,options):
       waitAnimation[iter%len(waitAnimation)]))
     sys.stdout.flush()
     
-    images=clients["glance"].images.list(owner=projectID)
-    for image in images:
-
-      if image.name==parameters["image-name"]:
-        
-        if image.status=="active":
-          imageNotActive=False
-          break
+    image=getImage(osc,clients,parameters["image-name"])
+    if isActive(image):
+      imageNotActive=False
+      break
     
     #wait some amount of time before checking again
     time.sleep(OSCheckWaitTime)
@@ -395,7 +480,7 @@ def createInstance(parameters,clients,osc,options):
     hostname=baseName+"-"+str(count)
   
   #check to see if we already have an instance with that name
-  if vmExists(osc,clients,hostname):
+  if getVM(osc,clients,hostname) is not None:
     if alreadyExists=="skip":
       sys.stdout.write("\n  An instance with the name \""
         +hostname
@@ -409,7 +494,7 @@ def createInstance(parameters,clients,osc,options):
       terminateInstance({"instance":hostname},clients,osc,options)
     elif alreadyExists=="rename":
       hostnameTry=baseName+"-"+str(count)
-      while vmExists(osc,clients,hostnameTry):
+      while getVM(osc,clients,hostnameTry):
         count+=1
         hostnameTry=baseName+"-"+str(count)
       sys.stdout.write("\n    An instance with the name \""+hostname
@@ -512,12 +597,9 @@ def createInstance(parameters,clients,osc,options):
     
     activeCount=0
     for hostname in hostNamesToCheck:
-      try:
-        existingNode=clients["nova"].servers.find(name=hostname)
-        if(existingNode.status=="ACTIVE"):
-          activeCount+=1
-      except novaclient.exceptions.NotFound:
-        pass#keep waiting for instance to show up
+      vm=getVM(osc,clients,hostname)
+      if isActive(vm):
+        activeCount+=1
       
     if activeCount!=instanceCount:
       sys.stdout.write(currentMessage+" {0}\r".format(
@@ -705,7 +787,7 @@ def associateFloatingIP(parameters,clients,osc,options):
   #at this point should have an instance to attach the ip to
   
   #check to see if ip already assigned to an instance
-  if ipToAttach.instance_id!=None and ipToAttach.instance_id!='':
+  if ipToAttach.instance_id is not None and ipToAttach.instance_id!='':
     server=clients["nova"].servers.find(id=ipToAttach.instance_id)
     
     #is it the instance we want to attach to?
@@ -1059,11 +1141,7 @@ def createVolume(parameters,clients,osc,options):
     images=clients["glance"].images.list()
     
     #find the image to create volume from
-    imageToUse=None
-    for image in images:
-      if(image.name==parameters["image"] or image.id==parameters["image"]):
-        imageToUse=image
-        break
+    imageToUse=getImage(osc,clients,parameters["image"],project=False)
     
     #if image not found we have a problem
     if imageToUse==None:
@@ -1081,26 +1159,23 @@ def createVolume(parameters,clients,osc,options):
     alreadyExists=options.alreadyExistsGlobal
   
   #check if there is a volume with that name already
-  volumes=clients["cinder"].volumes.list()
-  
-  for volume in volumes:
-    if volume.name==parameters["volume-name"]:
-    
-      if alreadyExists=="skip":
-        sys.stdout.write("  A volume with the name \""
-          +parameters["volume-name"]
-          +"\" already exists, skipping creation.\n")
-        sys.stdout.flush()
-        return
-      elif alreadyExists=="overwrite":
-        sys.stdout.write("  A volume with the name \""
-          +str(parameters["volume-name"])
-          +"\" already exists, overwriting.\n")
-        sys.stdout.flush()
-        deleteVolume({"volume":volume.id},clients,osc,options)
-      else:
-        raise Exception("a volume with the name \""
-          +str(parameters["volume-name"])+"\" already exists.")
+  volume=getVolume(osc,clients,parameters["volume-name"])
+  if volume is not None:
+    if alreadyExists=="skip":
+      sys.stdout.write("  A volume with the name \""
+        +parameters["volume-name"]
+        +"\" already exists, skipping creation.\n")
+      sys.stdout.flush()
+      return
+    elif alreadyExists=="overwrite":
+      sys.stdout.write("  A volume with the name \""
+        +str(parameters["volume-name"])
+        +"\" already exists, overwriting.\n")
+      sys.stdout.flush()
+      deleteVolume({"volume":volume.id},clients,osc,options)
+    else:
+      raise Exception("a volume with the name \""
+        +str(parameters["volume-name"])+"\" already exists.")
   
   #create the volume
   if imageID!=None:
@@ -1108,6 +1183,7 @@ def createVolume(parameters,clients,osc,options):
       +"\" from image \""+parameters["image"]+"\""
   else:
     currentMessage="  Creating an empty volume \""+parameters["volume-name"]+"\""
+  
   volume=clients["cinder"].volumes.create(size=parameters["size"]
     ,name=parameters["volume-name"],imageRef=imageID)
   
@@ -1119,12 +1195,10 @@ def createVolume(parameters,clients,osc,options):
   numChecks=int(float(parameters["size"])/gbPers/float(OSCheckWaitTime))
   while volumeDoesNotExists and iter<numChecks:
     
-    volumes=clients["cinder"].volumes.list()
-    for volume in volumes:
-      if volume.id==volumeID:
-        if volume.status=="available":
-          volumeDoesNotExists=False
-        break
+    volume=getVolume(osc,clients,volumeID)
+    if isActive(volume):
+      volumeDoesNotExists=False
+      break
     
     #wait some amount of time before checking again
     sys.stdout.write(currentMessage+" {0}\r".format(
@@ -1148,35 +1222,30 @@ def addSecurityGroup(parameters,clients,osc,options):
   osc.ensureNovaClient(clients)
   
   #get the requested security group
-  securityGroupToAdd=None
-  securityGroups=clients["nova"].security_groups.list()
-  for securityGroup in securityGroups:
-    if (securityGroup.name==parameters["security-group"]
-      or securityGroup.id==parameters["security-group"]):
-        securityGroupToAdd=securityGroup
-        break
+  securityGroupToAdd=getSecurityGroup(osc,clients,parameters["security-group"])
   
   if securityGroupToAdd==None:
     raise Exception("given security group \""+parameters["security-group"]+"\" not found.")
+  if type(securityGroupeToAdd)==type([]):
+    raise Exception("multiple security groups found matching \""+parameters["security-group"]+"\".")
   
   #get requested instance
   servers=clients["nova"].servers.list()
-  instanceToAttachTo=None
-  for server in servers:
-    if (server.name==parameters["instance"] 
-      or server.id==parameters["instance"]):
-      instanceToAttachTo=server
-      break
+  instanceToAttachTo=getVM(osc,clients,parameters["instance"])
   
   #if we don't have the instance report the problem
   if instanceToAttachTo==None:
     raise Exception("given instance \""+parameters["instance"]+"\" not found.")
-  
-  #add security group
-  instanceToAttachTo.add_security_group(securityGroupToAdd.name)
+  if type()==type([]):
+    for instance in instanceToAttachTo:
+      instance.add_security_group(securityGroupToAdd.name)
+  else:
+    #add security group
+    instanceToAttachTo.add_security_group(securityGroupToAdd.name)
   
   #we are finished, happens really quickly, not going to bother checking 
-  #security group added
+  #security group added, probably not anything depends on security group 
+  #already having been added, at least not on the time frame it takes to add one
   sys.stdout.write("    Security Group Added.\n")
 #When creating new action executor functions, add them to this dictionary
 #the key will be the XML tag under the <parameters> tag (see actions.xsd 
