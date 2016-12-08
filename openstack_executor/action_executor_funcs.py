@@ -6,6 +6,7 @@ import threading
 import os
 from . import utilFuncs 
 from . import formats
+import urllib
 
 #TODO: 
 # - add a function to remove a security group from a VM
@@ -454,10 +455,15 @@ def createInstance(parameters,clients,osc,options):
     keyName=parameters["key-name"]
   
   #check to see if a cloud-init script was specified
-  userDataFile=None
+  userData=None
   if "post-creation-script" in parameters.keys():
-    userDataFile=open(os.path.join(options.path
-      ,parameters["post-creation-script"]),'r')
+    try:
+      #try opening as url
+      userData=urllib.request.urlopen(parameters["post-creation-script"]).read()
+    except ValueError:
+      #try opening as a file
+      userData=open(os.path.join(options.path
+        ,parameters["post-creation-script"]),'r').read()
   
   #get alreadyExists action to take
   alreadyExists="fail"
@@ -543,7 +549,7 @@ def createInstance(parameters,clients,osc,options):
       ,image=None
       ,nics=nics
       ,key_name=keyName
-      ,userdata=userDataFile
+      ,userdata=userData
       )
     hostNamesToCheck.append(hostname)
   elif "image" in parameters["instance-boot-source"].keys():#boot form an image
@@ -579,7 +585,7 @@ def createInstance(parameters,clients,osc,options):
           ,image=bootImage
           ,nics=nics
           ,key_name=keyName
-          ,userdata=userDataFile
+          ,userdata=userData
           )
         count+=1
         hostNamesToCheck.append(hostname)
@@ -590,7 +596,7 @@ def createInstance(parameters,clients,osc,options):
         ,image=bootImage
         ,nics=nics
         ,key_name=keyName
-        ,userdata=userDataFile
+        ,userdata=userData
         )
       hostNamesToCheck.append(hostname)
   else:

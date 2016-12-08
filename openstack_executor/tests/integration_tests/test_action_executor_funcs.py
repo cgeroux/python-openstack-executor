@@ -346,7 +346,7 @@ class TestComputeVMTasks(unittest.TestCase):
     assert vm0 is None
     assert vm1 is None
 class TestCreateVMWithUserData(unittest.TestCase):
-  def test_00__createVM(self):
+  def test_00_createVM(self):
     """Tests the creation of a VM with supplied user data
     """
     
@@ -367,6 +367,21 @@ class TestCreateVMWithUserData(unittest.TestCase):
             </create-instance>
           </parameters>
         </action>
+        <action>
+          <id>vm-create-0</id>
+          <parameters>
+            <create-instance>
+              <name>"""+vmName+"""-0</name>
+              <flavor>"""+flavor+"""</flavor>
+              <instance-boot-source>
+                <image>"""+imageName+"""</image>
+              </instance-boot-source>
+              <key-name>thekey</key-name>
+              <post-creation-script>https://raw.githubusercontent.com/cgeroux/cloud-init-omeka/master/cloud-init.yaml</post-creation-script>
+              <already-exists>overwrite</already-exists>
+            </create-instance>
+          </parameters>
+        </action>
       </actions>
     """
     options.path=os.path.dirname(__file__)
@@ -374,7 +389,33 @@ class TestCreateVMWithUserData(unittest.TestCase):
     clients={}#seems that queering information such as if a VM is around or
       #not sometimes lags behind, by forcing a re-initalization of clients 
       #it seems to help this
-    #vm=openstack_executor.action_executor_funcs.getVM(osc,clients,vmName)
-    #assert openstack_executor.action_executor_funcs.isActive(vm)
+    vm=openstack_executor.action_executor_funcs.getVM(osc,clients,vmName)
+    vm0=openstack_executor.action_executor_funcs.getVM(osc,clients,vmName+"-0")
+    assert openstack_executor.action_executor_funcs.isActive(vm)
+    assert openstack_executor.action_executor_funcs.isActive(vm0)
+    
+    #now clean up
+    xml="""
+      <actions version="0.0">
+        <action>
+          <id>vm-terminate-test_00_createVM</id>
+          <parameters>
+            <terminate-instance>
+              <instance>"""+vmName+"""</instance>
+            </terminate-instance>
+          </parameters>
+        </action>
+        <action>
+          <id>vm-terminate-1-test02</id>
+          <parameters>
+            <terminate-instance>
+              <instance>"""+vmName+"""-0</instance>
+            </terminate-instance>
+          </parameters>
+        </action>
+      </actions>
+    """
+    
+    openstack_executor.run(xml,options)
 if __name__=="__main__":
   unittest.main()
