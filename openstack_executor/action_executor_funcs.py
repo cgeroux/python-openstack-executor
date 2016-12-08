@@ -448,13 +448,18 @@ def createInstance(parameters,clients,osc,options):
       +"\" not in list of available flavors "+str(flavorNames))
   flavor=clients["nova"].flavors.find(name=parameters["flavor"])
   
-  #TODO: add ability to supply a user data file
-  
   #check to see if a key pair was specified
   keyName=None
   if "key-name" in parameters.keys():
     keyName=parameters["key-name"]
   
+  #check to see if a cloud-init script was specified
+  userDataFile=None
+  if "post-creation-script" in parameters.keys():
+    userDataFile=open(os.path.join(options.path
+      ,parameters["post-creation-script"]),'r')
+  
+  #get alreadyExists action to take
   alreadyExists="fail"
   if "already-exists" in parameters.keys():
     alreadyExists=parameters["already-exists"]
@@ -538,6 +543,7 @@ def createInstance(parameters,clients,osc,options):
       ,image=None
       ,nics=nics
       ,key_name=keyName
+      ,userdata=userDataFile
       )
     hostNamesToCheck.append(hostname)
   elif "image" in parameters["instance-boot-source"].keys():#boot form an image
@@ -573,6 +579,7 @@ def createInstance(parameters,clients,osc,options):
           ,image=bootImage
           ,nics=nics
           ,key_name=keyName
+          ,userdata=userDataFile
           )
         count+=1
         hostNamesToCheck.append(hostname)
@@ -583,6 +590,7 @@ def createInstance(parameters,clients,osc,options):
         ,image=bootImage
         ,nics=nics
         ,key_name=keyName
+        ,userdata=userDataFile
         )
       hostNamesToCheck.append(hostname)
   else:

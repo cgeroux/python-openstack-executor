@@ -38,6 +38,7 @@
       <xs:element name="network" type="cm:non-empty-str" minOccurs="0" />
       <xs:element name="key-name" type="cm:non-empty-str" minOccurs="0" />
       <xs:element name="already-exists" type="pt:already-exists-type" minOccurs="0"/>
+      <xs:element name="post-creation-script" type="cm:non-empty-str" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
   

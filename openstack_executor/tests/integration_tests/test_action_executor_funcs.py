@@ -36,6 +36,9 @@ osc=openstack_executor.getOSClients()
 # actually check that a vm or volume was created as expected) 
 # rather than just assume everything went OK if an exception wasn't thrown 
 # or just trying to watch what happens in the openstack dashboard.
+# ^^^ this issue is actually quite a bit better now, however there are somethings
+#     which I do not specifically test for still, such as weather an IP address has_key
+#     been associated with a VM or not, or if a cloud-init script ran correctly
 #
 # add tests for functions:
 #  downloadImage
@@ -358,14 +361,16 @@ class TestCreateVMWithUserData(unittest.TestCase):
               <instance-boot-source>
                 <image>"""+imageName+"""</image>
               </instance-boot-source>
+              <key-name>thekey</key-name>
+              <post-creation-script>test_cloud_init.yaml</post-creation-script>
               <already-exists>overwrite</already-exists>
             </create-instance>
           </parameters>
         </action>
       </actions>
     """
-    
-    #openstack_executor.run(xml,options)
+    options.path=os.path.dirname(__file__)
+    openstack_executor.run(xml,options)
     clients={}#seems that queering information such as if a VM is around or
       #not sometimes lags behind, by forcing a re-initalization of clients 
       #it seems to help this

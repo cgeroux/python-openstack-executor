@@ -135,5 +135,9 @@ def main():
   #read in the XML file and perform the described actions
   f=open(args[0],'r')
   xmlActionsStr=f.read()
+  
+  settingsPath=os.path.dirname(args[0])
+  options.path=settingsPath
+  
   run(xmlActionsStr,options)
   
