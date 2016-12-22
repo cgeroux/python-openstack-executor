@@ -1,7 +1,6 @@
 <actions version="0.0">
   
-  <action>
-    <id>vm-terminate</id><!--Unique name to identify the action-->
+  <action><id>vm-terminate</id><!--Unique name to identify the action-->
     <parameters><!--settings describing the type of action and what it should do-->
       <terminate-instance><!--This action will terminate an instance (virtual machine)-->
         <instance>test-backup</instance><!--name or id of the instance to terminate-->
@@ -9,8 +8,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>upload-data-image</id>
+  <action><id>upload-data-image</id>
     <parameters>
       <upload-image><!-- uploads an image from the local filesystem to your 
         OpenStack project -->
@@ -23,8 +21,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>upload-root-image</id>
+  <action><id>upload-root-image</id>
     <parameters>
       <upload-image>
         <file-name>./root-image.vdi</file-name>
@@ -34,8 +31,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>create-data-volume</id>
+  <action><id>create-data-volume</id>
     <dependencies>
       <dependency>upload-data-image</dependency>
       <dependency>vm-terminate</dependency>
@@ -53,8 +49,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>create-root-volume</id>
+  <action><id>create-root-volume</id>
     <dependencies>
       <dependency>upload-root-image</dependency>
       <dependency>vm-terminate</dependency>
@@ -71,8 +66,7 @@
   
 
   <!--Setup vm, same as when creating the backup-->
-  <action>
-    <id>vm-create</id>
+  <action><id>vm-create</id>
     <dependencies>
       <dependency>create-root-volume</dependency>
       <dependency>create-data-volume</dependency>
@@ -90,8 +84,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>add-ip</id>
+  <action><id>add-ip</id>
     <dependencies>
       <dependency>vm-create</dependency>
     </dependencies>
@@ -104,8 +97,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>attach-data-disk</id>
+  <action><id>attach-data-disk</id>
     <dependencies>
       <dependency>vm-create</dependency>
     </dependencies>

@@ -1,7 +1,6 @@
 <actions version="0.0">
   
-  <action>
-    <id>vm-terminate</id><!--Unique name to identify the action-->
+  <action><id>vm-terminate</id><!--Unique name to identify the action-->
     <parameters><!--settings describing the type of action and what it should do-->
       <terminate-instance><!--This action will terminate an instance (virtual machine)-->
         <instance>test-backup</instance><!--name or id of the instance to terminate-->
@@ -9,8 +8,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>make-data-image</id>
+  <action><id>make-data-image</id>
     <dependencies>
       <dependency>vm-terminate</dependency><!--this action is dependent on the 
         action with id vm-terminate. This means that it will not be performed 
@@ -37,8 +35,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>download-data-image</id>
+  <action><id>download-data-image</id>
     <dependencies>
       <dependency>make-data-image</dependency>
     </dependencies>
@@ -53,8 +50,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>make-root-image</id>
+  <action><id>make-root-image</id>
     <dependencies>
       <dependency>vm-terminate</dependency>
     </dependencies>
@@ -68,8 +64,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>download-root-image</id>
+  <action><id>download-root-image</id>
     <dependencies>
       <dependency>make-root-image</dependency>
     </dependencies>
@@ -82,8 +77,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>vm-create</id>
+  <action><id>vm-create</id>
     <dependencies>
       <dependency>make-data-image</dependency>
       <dependency>make-root-image</dependency>
@@ -108,8 +102,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>add-ip</id>
+  <action><id>add-ip</id>
     <dependencies>
       <dependency>vm-create</dependency>
     </dependencies>
@@ -126,8 +119,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>attach-data-disk</id>
+  <action><id>attach-data-disk</id>
     <dependencies>
       <dependency>vm-create</dependency>
     </dependencies>
@@ -140,8 +132,7 @@
     </parameters>
   </action>
   
-  <action>
-    <id>add-security-group</id>
+  <action><id>add-security-group</id>
     <parameters>
       <add-security-group>
         <security-group>mediawiki_security</security-group><!-- name or id of a pre-existing security group to add-->

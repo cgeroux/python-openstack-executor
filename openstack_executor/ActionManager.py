@@ -67,12 +67,12 @@ class ActionManager(object):
       #if action has not been given XML it is not defined
       if not action.hasXML():
         raise Exception("Action \""+str(key)+"\" given for a dependency but not defined.")
-  def _signalDependencyComplete(self,dependent,dependency):
+  def _signalDependencyComplete(self,dependent,dependency,strReplace=None):
     """signal to the dependent that the dependency has been satisfied
     """
     
     self.actions[dependent].setDependencyAsSatisfied(dependency,self.exeFuncs
-      ,self.clients,self.osc,self.options)
+      ,self.clients,self.osc,self.options,strReplace=strReplace)
   def performActions(self):
     for action in self.initialActions:
       self.actions[action].execute(self.exeFuncs,self.clients,self.osc,self.options)

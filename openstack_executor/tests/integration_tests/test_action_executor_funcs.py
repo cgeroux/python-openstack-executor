@@ -37,14 +37,13 @@ osc=openstack_executor.getOSClients()
 # rather than just assume everything went OK if an exception wasn't thrown 
 # or just trying to watch what happens in the openstack dashboard.
 # ^^^ this issue is actually quite a bit better now, however there are somethings
-#     which I do not specifically test for still, such as weather an IP address has_key
+#     which I do not specifically test for still, such as weather an IP address has
 #     been associated with a VM or not, or if a cloud-init script ran correctly
 #
 # add tests for functions:
 #  downloadImage
 #  attachVolume
 #  uploadImage
-#  createVolume (not from an image)
 #  addSecurityGroup
 #  
 # In addition I could also exercise the various functions under different
@@ -417,5 +416,74 @@ class TestCreateVMWithUserData(unittest.TestCase):
     """
     
     openstack_executor.run(xml,options)
+class TestRenamePropagates(unittest.TestCase):
+  def test_00_renamePropoagated(self):
+    """
+    """
+    
+    xml="""
+      <actions version="0.0">
+        
+        <action><id>vm-create-test00</id>
+          <parameters>
+            <create-instance>
+              <name>"""+vmName+"""</name>
+              <flavor>"""+flavor+"""</flavor>
+              <instance-boot-source>
+                <image>"""+imageName+"""</image>
+              </instance-boot-source>
+              <already-exists>skip</already-exists>
+            </create-instance>
+          </parameters>
+        </action>
+        
+        <action><id>vm-create-test01</id>
+          <dependencies>
+            <dependency>vm-create-test00</dependency>
+          </dependencies>
+          <parameters>
+            <create-instance>
+              <name>"""+vmName+"""</name>
+              <flavor>"""+flavor+"""</flavor>
+              <instance-boot-source>
+                <image>"""+imageName+"""</image>
+              </instance-boot-source>
+              <already-exists>rename</already-exists>
+            </create-instance>
+          </parameters>
+        </action>
+        
+        <action><id>create-empty-volume</id>
+          <parameters>
+            <create-volume>
+              <volume-name>test</volume-name>
+              <size>1</size>
+              <already-exists>skip</already-exists>
+            </create-volume>
+          </parameters>
+        </action>
+        
+        <action><id>attach-empty-volume</id>
+          <dependencies>
+            <dependency>vm-create-test01</dependency>
+            <dependency>create-empty-volume</dependency>
+          </dependencies>
+          <parameters>
+            <attach-volume>
+              <instance>"""+vmName+"""</instance>
+              <volume>test</volume>
+              <device>/dev/vdc</device>
+            </attach-volume>
+          </parameters>
+        </action>
+        
+      </actions>
+    """
+    
+    openstack_executor.run(xml,options)
+    clients={}
+    vm=openstack_executor.action_executor_funcs.getVM(osc,clients,vmName+"-0")#get VM with updated name
+    volume=openstack_executor.action_executor_funcs.getVolume(osc,clients,"test")
+    assert openstack_executor.action_executor_funcs.isAttached(osc,clients,vm,volume)
 if __name__=="__main__":
   unittest.main()

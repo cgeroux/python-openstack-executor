@@ -114,6 +114,20 @@ def getSecurityGroup(osc,clients,groupName):
     return matchingGroups[0]
   else:
     return matchingGroups
+def isAttached(osc,clients,vm,volume):
+  """returns True if volume is attached to vm otherwise False
+  """
+  
+ 
+  if(len(volume.attachments)>0):#if volume has attachments
+    osc.ensureNovaClient(clients)
+    for attachment in volume.attachments:
+      
+      instance=clients["nova"].servers.find(id=attachment["server_id"])
+      if instance.id==vm.id:
+        return True
+  
+  return False
   
 #main action functions
 def terminateInstance(parameters,clients,osc,options):
@@ -368,6 +382,8 @@ def createInstance(parameters,clients,osc,options):
   """Creates an instance
   """
   
+  strReplace=None
+  
   #get number of instances to create
   instanceCount=1
   if "instance-count" in parameters.keys():
@@ -511,6 +527,7 @@ def createInstance(parameters,clients,osc,options):
       sys.stdout.write("\n    An instance with the name \""+hostname
         +"\" already exists, using name \""+hostnameTry+"\" instead.")
       sys.stdout.flush()
+      strReplace={hostname:hostnameTry}
       hostname=hostnameTry
     else:
       raise Exception("already an instance present with name \""
@@ -631,6 +648,7 @@ def createInstance(parameters,clients,osc,options):
       +hostname+"\" to become active.")
   
   sys.stdout.write("\n    Creation completed.\n")
+  return strReplace
 def attachVolume(parameters,clients,osc,options):
   """Attaches a volume to an instance
   """
@@ -1230,7 +1248,7 @@ def createVolume(parameters,clients,osc,options):
   sys.stdout.write("\n    Creation completed.\n")
   return
 def addSecurityGroup(parameters,clients,osc,options):
-  """
+  """Adds a security group to a VM
   """
   
   osc.ensureNovaClient(clients)
