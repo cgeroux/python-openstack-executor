@@ -999,7 +999,7 @@ def createVolume(parameters,clients):
   
   #check that we haven't timed out
   if iter>=OSNumChecks and volumeDoesNotExists:
-    raise Exception("Timed out after waiting "+numChecks*OSCheckWaitTime
+    raise Exception("Timed out after waiting "+str(numChecks*OSCheckWaitTime)
       +" s for volume creation to complete.\n")
   
   #notify that creation has completed
