@@ -8,12 +8,12 @@ from openstack_executor.ActionManager import *
 order=0
 step0Order=None
 step1Order=None
-def step0(parameters,clients):
+def step0(parameters,clients,osc,options):
   global step0Order
   global order
   step0Order=order
   order=order+1
-def step1(parameters,clients):
+def step1(parameters,clients,osc,options):
   global step1Order
   global order
   step1Order=order
@@ -87,8 +87,7 @@ class TestClassActionManagerMethods(unittest.TestCase):
         
       </actions>'''
     xmlActionManager=etree.fromstring(xmlActionManagerStr)
-    actionManager=ActionManager(xmlActionManager)
-    Action.exeFuncs={"step0":step0,"step1":step1}#override exeFuncs set in constructor of ActionManager
+    actionManager=ActionManager(xmlActionManager,None,None,{"step0":step0,"step1":step1})
     actionManager.performActions()
     self.assertEqual(step0Order,0)
     self.assertEqual(step1Order,1)

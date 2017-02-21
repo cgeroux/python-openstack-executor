@@ -4,7 +4,7 @@ from lxml import etree
 
 #this imports the installed version
 from openstack_executor.Action import *
-def instanceTerminateStub(parameters,clients):
+def instanceTerminateStub(parameters,clients,osc,options):
   clients["nova"]=None
 
 class TestClassActionMethods(unittest.TestCase):
@@ -36,7 +36,6 @@ class TestClassActionMethods(unittest.TestCase):
       </action>'''
     xmlAction=etree.fromstring(xmlActionStr)
     self.actionOneDep=Action(xmlAction)
-    Action.exeFuncs={"instance-terminate":instanceTerminateStub}
   def test_getID(self):
     
     #check we got correct ID
@@ -53,14 +52,16 @@ class TestClassActionMethods(unittest.TestCase):
   def test_allDependenciesMetTrue(self):
     
     #mark dependency as satisfied
-    self.actionOneDep.setDependencyAsSatisfied("VM-termination")
+    self.actionOneDep.setDependencyAsSatisfied("VM-termination"
+      ,{"instance-terminate":instanceTerminateStub},{},None,None)
     
     #check that dependencies are met
     self.assertEqual(self.actionOneDep.allDependenciesMet(),True)
   def test_executedAfterDependenciesMet(self):
     
     #mark dependency as satisfied
-    self.actionOneDep.setDependencyAsSatisfied("VM-termination")
+    self.actionOneDep.setDependencyAsSatisfied("VM-termination"
+      ,{"instance-terminate":instanceTerminateStub},{},None,None)
     
     #since all dependencies should have been met, did it execute
     self.assertEqual(self.actionOneDep.executed,True)
@@ -80,9 +81,12 @@ class TestClassActionMethods(unittest.TestCase):
     
     #mark dependency as satisfied, should cause action to execute
     #and signal to dependents it has been completed
-    self.actionOneDep.setDependencyAsSatisfied("VM-termination")
+    self.actionOneDep.setDependencyAsSatisfied("VM-termination"
+      ,{"instance-terminate":instanceTerminateStub},{},None,None)
   def test_setClientInExecFunc(self):
-    self.actionOneDep.execute()
-    self.assertTrue("nova" in Action.clients.keys())
+    clients={}
+    self.actionOneDep.execute({"instance-terminate":instanceTerminateStub}
+      ,clients,None,None)
+    self.assertTrue("nova" in clients.keys())
 if __name__=="__main__":
   unittest.main()

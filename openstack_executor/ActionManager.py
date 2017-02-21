@@ -2,16 +2,17 @@ from lxml import etree
 from .Action import Action
 
 class ActionManager(object):
-  """
+  """Manages actions, should not have more than one ActionManager
   """
   
-  def __init__(self,xmlActions):
+  def __init__(self,xmlActions,osc,options,exeFuncs):
     """Given the top level actions node initializes a dictionary of actions
     """
     
-    #set the executor functions to use
-    from .action_executor_funcs import exeFuncs
-    Action.exeFuncs=exeFuncs
+    self.exeFuncs=exeFuncs
+    self.osc=osc
+    self.options=options
+    self.clients={}
     
     self.actions={}
     self.initialActions=[]
@@ -66,11 +67,12 @@ class ActionManager(object):
       #if action has not been given XML it is not defined
       if not action.hasXML():
         raise Exception("Action \""+str(key)+"\" given for a dependency but not defined.")
-  def _signalDependencyComplete(self,dependent,dependency):
+  def _signalDependencyComplete(self,dependent,dependency,strReplace=None):
     """signal to the dependent that the dependency has been satisfied
     """
     
-    self.actions[dependent].setDependencyAsSatisfied(dependency)
+    self.actions[dependent].setDependencyAsSatisfied(dependency,self.exeFuncs
+      ,self.clients,self.osc,self.options,strReplace=strReplace)
   def performActions(self):
     for action in self.initialActions:
-      self.actions[action].execute()
+      self.actions[action].execute(self.exeFuncs,self.clients,self.osc,self.options)

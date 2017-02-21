@@ -7,9 +7,6 @@ class Action(object):
   """
   """
   
-  exeFuncs=None
-  clients={}
-  
   def __init__(self,xmlAction=None):
     """Initialize the action
     """
@@ -26,7 +23,21 @@ class Action(object):
     """Set the XML which defines the action
     """
     
-    self.__init__(xmlAction)
+    self.__init__(xmlAction)#TODO: should this re-initialize the object?
+  def replaceInXML(self,strReplace):
+    """
+    """
+    
+    if self.hasXML():
+      context=etree.iterwalk(self.XML,events=("end",))
+      for event,node in context:
+        if node.text!=None:
+          tmp=node.text
+          for key in strReplace:#TODO: is this the way we want to 
+            #handle multiple replaces? This could cause unexpected 
+            #behaviour depending on the order they are applied.
+            tmp=tmp.replace(key,strReplace[key])
+          node.text=tmp
   def setSignalDependencyFunc(self,f):
     """Set the function which is used to signal to dependants that a dependency
     has been met.
@@ -37,7 +48,8 @@ class Action(object):
     """
     
     self.signalDependencyFunc=f
-  def setDependencyAsSatisfied(self,dependencyID):
+  def setDependencyAsSatisfied(self,dependencyID,exeFuncs,clients,osc,options
+    ,strReplace=None):
     """Indicates to the action that the dependency named by dependencyID has been satisfied.
     
     If all dependencies have been satisfied will execute the action.
@@ -56,9 +68,18 @@ class Action(object):
     #Set it as satisfied
     self.dependencies[dependencyID]=True
     
+    #adjust xml if needed in case of renames of dependencies
+    if strReplace!=None:
+      sys.stdout.write("  Updating action \""+self.getID()
+        +"\" by replacing the following dictionary keys with"
+        +" their values in the action's XML:\n    "
+        +str(strReplace)+" ...\n")
+      sys.stdout.flush()
+      self.replaceInXML(strReplace)
+    
     #check to see if all dependencies are satisfied
     if(self.allDependenciesMet()):
-      self.execute()
+      self.execute(exeFuncs,clients,osc,options,strReplace=strReplace)
   def getID(self):
     """ returns the action ID as specified in the XML
     """
@@ -106,11 +127,13 @@ class Action(object):
     """
     
     self.dependents.append(dependent)
-  def execute(self):
+  def execute(self,exeFuncs,clients,osc,options,strReplace=None):
     """Executes the action, often this will be called from 
     setDependencyAsSatisfied once all dependencies have been flagged as
     satisfied. However, if there are no dependencies this can and should be
     called directly.
+    
+    strReplace propagates any modifications needed in dependent actions.
     """
     
     if not self.executed:
@@ -118,13 +141,18 @@ class Action(object):
       sys.stdout.write("Executing action \""+self.getID()+"\"\n")
       sys.stdout.flush()
       
-      Action.exeFuncs[self.getType()](self.getParameters(),Action.clients)
+      tmp=exeFuncs[self.getType()](self.getParameters(),clients,osc,options)
+      if tmp!=None: 
+        if strReplace!=None:#merge the two dictionaries
+          strReplace.update(tmp)
+        else:
+          strReplace=tmp
       
       #once finished need to tell dependents we are done
       for dependent in self.dependents:
         if self.signalDependencyFunc==None:
           raise Exception("Dependency Signal function not set for action "+str(self.getID()))
-        self.signalDependencyFunc(dependent,self.getID())
+        self.signalDependencyFunc(dependent,self.getID(),strReplace=strReplace)
       
       #indicate that action has been executed
       self.executed=True
